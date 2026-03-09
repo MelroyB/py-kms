@@ -23,6 +23,7 @@ from pykms_Misc import kms_parser_get, kms_parser_check_optionals, kms_parser_ch
 from pykms_Format import enco, deco, pretty_printer, justify
 from pykms_Connect import MultipleListener
 from pykms_Sql import sql_initialize
+from pykms_Blacklist import get_blacklist_path, parse_blacklist_lines, is_ip_blocked
 
 srv_version             = "py-kms_2020-10-01"
 __license__             = "The Unlicense"
@@ -174,6 +175,42 @@ class server_thread(threading.Thread):
 ##---------------------------------------------------------------------------------------------------------------------------------------------------------
 
 loggersrv = logging.getLogger('logsrv')
+_blacklist_lock = threading.Lock()
+_blacklist_cache = {
+        'path' : None,
+        'mtime' : None,
+        'rules' : [],
+        'entries' : []
+}
+
+def _blacklist_reload_if_needed():
+        path = get_blacklist_path()
+        mtime = os.path.getmtime(path) if os.path.isfile(path) else None
+
+        with _blacklist_lock:
+                if _blacklist_cache['path'] == path and _blacklist_cache['mtime'] == mtime:
+                        return
+
+                lines = []
+                if os.path.isfile(path):
+                        with open(path, 'r') as f:
+                                lines = f.read().splitlines()
+
+                rules, errors, entries = parse_blacklist_lines(lines)
+                _blacklist_cache['path'] = path
+                _blacklist_cache['mtime'] = mtime
+                _blacklist_cache['rules'] = rules
+                _blacklist_cache['entries'] = entries
+
+                if errors:
+                        for error in errors:
+                                loggersrv.warning("Blacklist parse error: %s", error)
+                loggersrv.info("Blacklist loaded from %s (%d entries).", path, len(entries))
+
+def _blacklist_is_blocked(ip_value):
+        _blacklist_reload_if_needed()
+        with _blacklist_lock:
+                return is_ip_blocked(ip_value, _blacklist_cache['rules'])
 
 def _str2bool(v):
     if isinstance(v, bool):
@@ -481,9 +518,16 @@ def server_main_terminal():
 
 class kmsServerHandler(socketserver.BaseRequestHandler):
         def setup(self):
-                loggersrv.info("Connection accepted: %s:%d" %(self.client_address[0], self.client_address[1]))
+                self.is_blacklisted = _blacklist_is_blocked(self.client_address[0])
+                if self.is_blacklisted:
+                        loggersrv.warning("Connection blocked by blacklist: %s:%d" %(self.client_address[0], self.client_address[1]))
+                        self.request.close()
+                else:
+                        loggersrv.info("Connection accepted: %s:%d" %(self.client_address[0], self.client_address[1]))
 
         def handle(self):
+                if getattr(self, 'is_blacklisted', False):
+                        return
                 self.request.settimeout(srv_config['timeoutsndrcv'])
                 while True:
                         # self.request is the TCP socket connected to the client

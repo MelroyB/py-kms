@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block title %}settings{% endblock %}
+
+{% block content %}
+<div class="section-head">
+    <div>
+        <h2 class="page-title">Security Settings</h2>
+        <p class="page-subtitle">Manage source IP blacklist rules for incoming KMS connections.</p>
+    </div>
+</div>
+
+<div class="panel-card">
+    <p class="small-note">
+        Storage path: <code>{{ blacklist_path }}</code><br>
+        Active rules: <strong>{{ blacklist_count }}</strong><br>
+        Supported formats: single IP (<code>192.168.1.10</code>), CIDR (<code>10.0.0.0/24</code>), range (<code>172.16.0.10-172.16.0.50</code>).
+    </p>
+</div>
+
+{% if success %}
+<div class="panel-card" style="border-color:#9dd6c4;background:#eefcf6;">
+    <p class="small-note" style="color:#1f6d55;">{{ success }}</p>
+</div>
+{% endif %}
+
+{% if error %}
+<div class="panel-card" style="border-color:#efc1be;background:#ffe9e7;">
+    <p class="small-note" style="color:#9a312c;">{{ error }}</p>
+    {% if parse_errors %}
+    <ul class="small-note" style="margin-top:0.5rem; color:#9a312c;">
+        {% for parse_error in parse_errors %}
+        <li>{{ parse_error }}</li>
+        {% endfor %}
+    </ul>
+    {% endif %}
+</div>
+{% endif %}
+
+<section class="panel-card">
+    <form method="post" action="/settings" class="login-form">
+        <div>
+            <label class="login-label" for="blacklist_entries">Blacklist Rules</label>
+            <textarea class="login-input" id="blacklist_entries" name="blacklist_entries" rows="14" spellcheck="false">{{ blacklist_entries }}</textarea>
+        </div>
+        <button type="submit" class="login-button">Save Blacklist</button>
+    </form>
+</section>
+{% endblock %}

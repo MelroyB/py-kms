@@ -46,6 +46,7 @@ The wiki has been completly reworked and is now available on [readthedocs.io](ht
 - To start the server automatically using Docker, execute `docker run -d --name py-kms --restart always -p 1688:1688 ghcr.io/py-kms-organization/py-kms`.
 - To show the help pages type: `python3 pykms_Server.py -h` and `python3 pykms_Client.py -h`.
 - To protect the WebUI with a login, set `PYKMS_WEBUI_PASSWORD` (required), plus optional `PYKMS_WEBUI_USERNAME` (default `admin`) and `PYKMS_WEBUI_SECRET_KEY`.
+- To persist and manage blocked source IPs/ranges from the WebUI settings page, use `PYKMS_BLACKLIST_PATH` (default `/home/py-kms/db/pykms_blacklist.txt`).
 
 ## License
    - _py-kms_ is [![Unlicense](https://img.shields.io/badge/license-unlicense-lightgray.svg)](./LICENSE)

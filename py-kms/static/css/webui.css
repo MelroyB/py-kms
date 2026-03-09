@@ -514,6 +514,12 @@ table.compact-table tbody tr:hover td {
     transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
+textarea.login-input {
+    font-family: "JetBrains Mono", "Consolas", "Menlo", monospace;
+    min-height: 12rem;
+    resize: vertical;
+}
+
 .login-input:focus {
     border-color: #76bda4;
     box-shadow: 0 0 0 3px rgba(118, 189, 164, 0.22);

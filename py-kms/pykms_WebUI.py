@@ -2,6 +2,7 @@ import os, uuid, datetime, hmac
 from flask import Flask, render_template, request, redirect, url_for, session
 from pykms_Sql import sql_get_all
 from pykms_DB2Dict import kmsDB2Dict
+from pykms_Blacklist import get_blacklist_path, parse_blacklist_text
 
 def _random_uuid():
     return str(uuid.uuid4()).replace('-', '_')
@@ -57,6 +58,7 @@ if _webui_auth_enabled:
     app.secret_key = os.environ.get('PYKMS_WEBUI_SECRET_KEY') or uuid.uuid5(uuid.NAMESPACE_OID, _webui_auth_password).hex
 app.jinja_env.globals['webui_auth_enabled'] = _webui_auth_enabled
 app.jinja_env.globals['webui_auth_user'] = _webui_auth_username
+app.jinja_env.globals['blacklist_path'] = get_blacklist_path()
 
 _version_info_path = os.environ.get('PYKMS_VERSION_PATH', '../VERSION')
 if os.path.exists(_version_info_path):
@@ -122,6 +124,56 @@ def logout():
     if _webui_auth_enabled:
         return redirect(url_for('login'))
     return redirect(url_for('root'))
+
+@app.route('/settings', methods = ['GET', 'POST'])
+def settings():
+    _increase_serve_count()
+    blacklist_path = get_blacklist_path()
+    error = None
+    success = None
+    entries_text = ''
+    active_entries = []
+    parse_errors = []
+
+    if os.path.isfile(blacklist_path):
+        with open(blacklist_path, 'r') as f:
+            existing_text = f.read()
+        _, _, active_entries = parse_blacklist_text(existing_text)
+        entries_text = '\n'.join(active_entries)
+
+    if request.method == 'POST':
+        submitted_text = request.form.get('blacklist_entries', '')
+        _, errors, entries = parse_blacklist_text(submitted_text)
+        active_entries = entries
+        if errors:
+            error = 'Invalid entries detected. Please fix the lines shown below.'
+            parse_errors = errors
+            entries_text = submitted_text
+        else:
+            try:
+                target_dir = os.path.dirname(blacklist_path)
+                if target_dir:
+                    os.makedirs(target_dir, exist_ok = True)
+                with open(blacklist_path, 'w') as f:
+                    payload = '\n'.join(entries)
+                    if payload:
+                        payload += '\n'
+                    f.write(payload)
+                entries_text = '\n'.join(entries)
+                success = f'Blacklist saved. {len(entries)} rule(s) active.'
+            except Exception as e:
+                error = f'Failed to save blacklist: {e}'
+
+    return render_template(
+        'settings.html',
+        path='/settings/',
+        blacklist_path=blacklist_path,
+        blacklist_entries=entries_text,
+        blacklist_count=len(active_entries),
+        error=error,
+        success=success,
+        parse_errors=parse_errors
+    )
 
 @app.route('/')
 def root():

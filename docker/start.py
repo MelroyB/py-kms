@@ -21,6 +21,7 @@ argumentVariableMapping = {
 }
 
 db_path = os.path.join(os.sep, 'home', 'py-kms', 'db', 'pykms_database.db')
+blacklist_path = os.environ.get('PYKMS_BLACKLIST_PATH', os.path.join(os.sep, 'home', 'py-kms', 'db', 'pykms_blacklist.txt'))
 log_file = os.environ.get('LOGFILE', 'STDOUT')
 listen_ip = os.environ.get('IP', '::').split()
 listen_port = os.environ.get('PORT', '1688')
@@ -61,6 +62,7 @@ def start_kms(logger):
       pykms_webui_env['PORT'] = '8080'
       pykms_webui_env['PYKMS_LICENSE_PATH'] = '/LICENSE'
       pykms_webui_env['PYKMS_VERSION_PATH'] = '/VERSION'
+      pykms_webui_env['PYKMS_BLACKLIST_PATH'] = blacklist_path
       pykms_webui_process = subprocess.Popen(['gunicorn', '--log-level', os.environ.get('LOGLEVEL'), 'pykms_WebUI:app'], env=pykms_webui_env)
   except Exception as e:
     logger.error("Failed to start webui (ignoring and continuing anyways): %s" % e)
