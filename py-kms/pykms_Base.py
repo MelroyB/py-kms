@@ -120,20 +120,14 @@ class kmsBase:
                 try:
                         from datetime import datetime
                         from tzlocal import get_localzone
-                        from pytz.exceptions import UnknownTimeZoneError
-                        try:
-                                local_dt = datetime.fromisoformat(str(requestDatetime)).astimezone(get_localzone())
-                        except UnknownTimeZoneError:
-                                pretty_printer(log_obj = loggersrv.warning,
-                                               put_text = "{reverse}{yellow}{bold}Unknown time zone ! Request time not localized.{end}")
-                                local_dt = requestDatetime
+                        local_dt = datetime.fromisoformat(str(requestDatetime)).astimezone(get_localzone())
                 except ImportError:
                         pretty_printer(log_obj = loggersrv.warning,
-                                       put_text = "{reverse}{yellow}{bold}Module 'tzlocal' or 'pytz' not available ! Request time not localized.{end}")
+                                       put_text = "{reverse}{yellow}{bold}Module 'tzlocal' not available ! Request time not localized.{end}")
                         local_dt = requestDatetime
                 except Exception as e:
-                    # Just in case something else goes wrong
-                    loggersrv.warning('Okay, something went horribly wrong while localizing the request time (proceeding anyways): ' + str(e))
+                    # Just in case something else goes wrong.
+                    loggersrv.warning('Could not localize request time, proceeding with UTC value: %s' %str(e))
                     local_dt = requestDatetime
                     pass
 

@@ -18,3 +18,15 @@ Supported rule formats:
 - single IP (`192.168.1.10`)
 - CIDR range (`10.0.0.0/24`)
 - explicit range (`172.16.1.10-172.16.1.50`)
+
+## Source IP backfill on startup
+When the container starts, py-kms can backfill older sqlite client rows that still have `sourceIp` empty by parsing existing server log files.
+
+Environment variables:
+- `PYKMS_SOURCEIP_BACKFILL_ON_START` (default: `1`)
+- `PYKMS_SOURCEIP_BACKFILL_GLOB` (default: `/home/py-kms/db/pykms_logserver.log*`)
+- `PYKMS_SOURCEIP_BACKFILL_LOGS` (optional explicit comma-separated list of log files; overrides glob)
+
+Important:
+- Backfill only works from log files that are present in the mounted volume.
+- If you only log to `STDOUT`, there is no log file for backfill.

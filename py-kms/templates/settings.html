@@ -19,16 +19,16 @@
 </div>
 
 {% if success %}
-<div class="panel-card" style="border-color:#9dd6c4;background:#eefcf6;">
-    <p class="small-note" style="color:#1f6d55;">{{ success }}</p>
+<div class="panel-card is-success">
+    <p class="small-note text-success">{{ success }}</p>
 </div>
 {% endif %}
 
 {% if error %}
-<div class="panel-card" style="border-color:#efc1be;background:#ffe9e7;">
-    <p class="small-note" style="color:#9a312c;">{{ error }}</p>
+<div class="panel-card is-danger">
+    <p class="small-note text-danger">{{ error }}</p>
     {% if parse_errors %}
-    <ul class="small-note" style="margin-top:0.5rem; color:#9a312c;">
+    <ul class="small-note text-danger" style="margin-top:0.5rem;">
         {% for parse_error in parse_errors %}
         <li>{{ parse_error }}</li>
         {% endfor %}

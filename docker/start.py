@@ -1,6 +1,7 @@
 #!/usr/bin/python3 -u
 
 # This replaces the old start.sh and ensures all arguments are bound correctly from the environment variables...
+import glob
 import logging
 import os
 import subprocess
@@ -27,10 +28,53 @@ listen_ip = os.environ.get('IP', '::').split()
 listen_port = os.environ.get('PORT', '1688')
 want_webui = os.environ.get('WEBUI', '0') == '1' # if the variable is not provided, we assume the user does not want the webui
 
+def _env_bool(env_name, default='1'):
+  value = os.environ.get(env_name, default).strip().lower()
+  return value in ['1', 'true', 'yes', 'y', 'on']
+
+def run_source_ip_backfill(logger):
+  if not want_webui:
+    return
+  if not _env_bool('PYKMS_SOURCEIP_BACKFILL_ON_START', '1'):
+    logger.info("Source IP startup backfill disabled by PYKMS_SOURCEIP_BACKFILL_ON_START.")
+    return
+  if not os.path.isfile(db_path):
+    logger.debug("No sqlite db found at %s, skipping source IP backfill.", db_path)
+    return
+
+  logs_override = os.environ.get('PYKMS_SOURCEIP_BACKFILL_LOGS', '').strip()
+  if logs_override:
+    candidates = [entry.strip() for entry in logs_override.split(',') if entry.strip()]
+  else:
+    log_glob = os.environ.get('PYKMS_SOURCEIP_BACKFILL_GLOB', '/home/py-kms/db/pykms_logserver.log*')
+    candidates = glob.glob(log_glob)
+
+  log_files = sorted({path for path in candidates if os.path.isfile(path)}, key = os.path.getmtime)
+  if len(log_files) == 0:
+    logger.info("No log files found for source IP backfill, skipping.")
+    return
+
+  command = [PYTHON3, '-u', 'pykms_BackfillSourceIp.py', '--db', db_path, '--logs'] + log_files
+  logger.info("Running source IP startup backfill with %d log file(s).", len(log_files))
+  completed = subprocess.run(command, text = True, capture_output = True)
+  if completed.returncode == 0:
+    output = completed.stdout.strip()
+    if output:
+      logger.info("Source IP startup backfill result:\n%s", output)
+    else:
+      logger.info("Source IP startup backfill completed.")
+  else:
+    logger.warning("Source IP startup backfill failed (exit code %s).", completed.returncode)
+    if completed.stdout:
+      logger.warning("Backfill stdout:\n%s", completed.stdout.strip())
+    if completed.stderr:
+      logger.warning("Backfill stderr:\n%s", completed.stderr.strip())
+
 def start_kms(logger):
   # Make sure the full path to the db exists
   if want_webui and not os.path.exists(os.path.dirname(db_path)):
     os.makedirs(os.path.dirname(db_path), exist_ok=True)
+  run_source_ip_backfill(logger)
 
   # Build the command to execute
   command = [PYTHON3, '-u', 'pykms_Server.py', listen_ip[0], listen_port]

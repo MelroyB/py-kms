@@ -19,6 +19,8 @@ ENV LOGSIZE=""
 ENV TZ=America/Chicago
 ENV WEBUI=1
 ENV PYKMS_BLACKLIST_PATH=/home/py-kms/db/pykms_blacklist.txt
+ENV PYKMS_SOURCEIP_BACKFILL_ON_START=1
+ENV PYKMS_SOURCEIP_BACKFILL_GLOB=/home/py-kms/db/pykms_logserver.log*
 
 COPY docker/docker-py3-kms/requirements.txt /home/py-kms/
 RUN apk add --no-cache --update \

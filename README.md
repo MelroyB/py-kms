@@ -47,6 +47,7 @@ The wiki has been completly reworked and is now available on [readthedocs.io](ht
 - To show the help pages type: `python3 pykms_Server.py -h` and `python3 pykms_Client.py -h`.
 - To protect the WebUI with a login, set `PYKMS_WEBUI_PASSWORD` (required), plus optional `PYKMS_WEBUI_USERNAME` (default `admin`) and `PYKMS_WEBUI_SECRET_KEY`.
 - To persist and manage blocked source IPs/ranges from the WebUI settings page, use `PYKMS_BLACKLIST_PATH` (default `/home/py-kms/db/pykms_blacklist.txt`).
+- To backfill older sqlite rows with missing source IPs at startup, configure `PYKMS_SOURCEIP_BACKFILL_*` variables (see `docker/README.md`).
 
 ## License
    - _py-kms_ is [![Unlicense](https://img.shields.io/badge/license-unlicense-lightgray.svg)](./LICENSE)
