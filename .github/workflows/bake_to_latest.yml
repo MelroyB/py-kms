@@ -17,6 +17,8 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v5
+      - name: Normalize image owner
+        run: echo "IMAGE_OWNER_LC=${GITHUB_REPOSITORY_OWNER,,}" >> "$GITHUB_ENV"
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
         with:
@@ -43,7 +45,7 @@ jobs:
           file: ./docker/docker-py3-kms/Dockerfile
           platforms: linux/amd64,linux/386,linux/arm64/v8,linux/arm/v7,linux/arm/v6
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/py-kms:python3
+          tags: ghcr.io/${{ env.IMAGE_OWNER_LC }}/py-kms:python3
           build-args: |
             BUILD_COMMIT=${{ github.sha }}
             BUILD_BRANCH=${{ github.ref_name }}
@@ -55,7 +57,7 @@ jobs:
           file: ./docker/docker-py3-kms/Dockerfile
           platforms: linux/amd64,linux/386,linux/arm64/v8,linux/arm/v7,linux/arm/v6
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/py-kms:python3,ghcr.io/${{ github.repository_owner }}/py-kms:python3
+          tags: ${{ secrets.DOCKER_USERNAME }}/py-kms:python3,ghcr.io/${{ env.IMAGE_OWNER_LC }}/py-kms:python3
           build-args: |
             BUILD_COMMIT=${{ github.sha }}
             BUILD_BRANCH=${{ github.ref_name }}
@@ -67,7 +69,7 @@ jobs:
           file: ./docker/docker-py3-kms-minimal/Dockerfile
           platforms: linux/amd64,linux/386,linux/arm64/v8,linux/arm/v7,linux/arm/v6
           push: true
-          tags: ghcr.io/${{ github.repository_owner }}/py-kms:latest,ghcr.io/${{ github.repository_owner }}/py-kms:minimal
+          tags: ghcr.io/${{ env.IMAGE_OWNER_LC }}/py-kms:latest,ghcr.io/${{ env.IMAGE_OWNER_LC }}/py-kms:minimal
           build-args: |
             BUILD_COMMIT=${{ github.sha }}
             BUILD_BRANCH=${{ github.ref_name }}
@@ -79,7 +81,7 @@ jobs:
           file: ./docker/docker-py3-kms-minimal/Dockerfile
           platforms: linux/amd64,linux/386,linux/arm64/v8,linux/arm/v7,linux/arm/v6
           push: true
-          tags: ${{ secrets.DOCKER_USERNAME }}/py-kms:latest,ghcr.io/${{ github.repository_owner }}/py-kms:latest,${{ secrets.DOCKER_USERNAME }}/py-kms:minimal,ghcr.io/${{ github.repository_owner }}/py-kms:minimal
+          tags: ${{ secrets.DOCKER_USERNAME }}/py-kms:latest,ghcr.io/${{ env.IMAGE_OWNER_LC }}/py-kms:latest,${{ secrets.DOCKER_USERNAME }}/py-kms:minimal,ghcr.io/${{ env.IMAGE_OWNER_LC }}/py-kms:minimal
           build-args: |
             BUILD_COMMIT=${{ github.sha }}
             BUILD_BRANCH=${{ github.ref_name }}
