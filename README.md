@@ -1,54 +1,88 @@
-# Readme
+# py-kms
 ![repo-size](https://img.shields.io/github/repo-size/Py-KMS-Organization/py-kms)
 ![open-issues](https://img.shields.io/github/issues/Py-KMS-Organization/py-kms)
 ![last-commit](https://img.shields.io/github/last-commit/Py-KMS-Organization/py-kms/master)
 ![docker-pulls](https://img.shields.io/docker/pulls/pykmsorg/py-kms)
 ![read-the-docs](https://img.shields.io/readthedocs/py-kms)
-***
 
-_Keep in mind that this project is not intended for production use. Feel free to use it to test your own systems or maybe even learn something from the protocol structure. :)_
+_This project is intended for testing and learning, not for production use._
 
-## History
-_py-kms_ is a port of node-kms created by [cyrozap](http://forums.mydigitallife.info/members/183074-markedsword), which is a port of either the C#, C++, or .NET implementations of KMS Emulator. The original version was written by [CODYQX4](http://forums.mydigitallife.info/members/89933-CODYQX4) and is derived from the reverse-engineered code of Microsoft's official KMS.
-This version of _py-kms_ is for itself a fork of the original implementation by [SystemRage](https://github.com/SystemRage/py-kms), which was abandoned early 2021.
+## Overview
+`py-kms` is a Python KMS server emulator forked from the original `SystemRage/py-kms` project.
+It supports KMS protocol v4/v5/v6, includes a Docker-first runtime, and has a modern WebUI for client, product, and security management.
 
-## Features
-- Responds to `v4`, `v5`, and `v6` KMS requests.
-- Supports activating:
-	- Windows Vista 
-	- Windows 7 
-	- Windows 8
-	- Windows 8.1
-	- Windows 10 ( 1511 / 1607 / 1703 / 1709 / 1803 / 1809 )
-    - Windows 10 ( 1903 / 1909 / 20H1, 20H2, 21H1, 21H2 )
-    - Windows 11 ( 21H2 )
-	- Windows Server 2008
-	- Windows Server 2008 R2
-	- Windows Server 2012
-	- Windows Server 2012 R2
-	- Windows Server 2016
-	- Windows Server 2019
-	- Windows Server 2022
-	- Microsoft Office 2010 ( Volume License )
-	- Microsoft Office 2013 ( Volume License )
-	- Microsoft Office 2016 ( Volume License )
-	- Microsoft Office 2019 ( Volume License )
-	- Microsoft Office 2021 ( Volume License )
-  - It's written in Python (tested with Python 3.10.1).
-  - Supports execution by `Docker`, `systemd` and many more...
-  - Uses `sqlite` for persistent data storage (with a simple web-based explorer).
+## Key Features
+- KMS protocol support: `v4`, `v5`, `v6`
+- Product data from `KmsDataBase.xml` (Windows + Office)
+- SQLite persistence for client activations
+- WebUI with:
+  - clients overview
+  - products catalog
+  - settings page
+  - built-in login protection
+- Source IP tracking in the clients table
+- Startup source-IP backfill from server logs
+- Persistent blacklist management (single IP, CIDR, range)
+- Blacklist attempt counters (per rule + per source IP)
+
+## Quick Start
+
+### Run from source
+- Server:
+```bash
+python3 pykms_Server.py [IPADDRESS] [PORT]
+```
+- Help:
+```bash
+python3 pykms_Server.py -h
+python3 pykms_Client.py -h
+```
+
+### Run with Docker
+```bash
+docker run -d \
+  --name py-kms \
+  --restart always \
+  -p 1688:1688 \
+  -p 8080:8080 \
+  ghcr.io/py-kms-organization/py-kms
+```
+
+For Docker-specific details (env vars, volume behavior), see:
+- [docker/README.md](./docker/README.md)
+
+## Important Environment Variables
+
+### Core
+- `IP` (default `::`)
+- `PORT` (default `1688`)
+- `LOGLEVEL` (default `INFO`)
+- `WEBUI` (`1` in full image, `0` in minimal image)
+
+### WebUI Authentication
+- `PYKMS_WEBUI_PASSWORD` (required to enable login)
+- `PYKMS_WEBUI_USERNAME` (optional, default `admin`)
+- `PYKMS_WEBUI_SECRET_KEY` (optional, recommended)
+
+### Blacklist
+- `PYKMS_BLACKLIST_PATH`  
+  default: `/home/py-kms/db/pykms_blacklist.txt`
+- `PYKMS_BLACKLIST_STATS_PATH`  
+  default: `/home/py-kms/db/pykms_blacklist_stats.json`
+
+### Source IP Backfill
+- `PYKMS_SOURCEIP_BACKFILL_ON_START` (default `1`)
+- `PYKMS_SOURCEIP_BACKFILL_GLOB` (default `/home/py-kms/db/pykms_logserver.log*`)
+- `PYKMS_SOURCEIP_BACKFILL_LOGS` (optional explicit comma-separated list; overrides glob)
+
+## Notes
+- If you use only `LOGFILE=STDOUT`, startup source-IP backfill has no log files to parse.
+- For persistent sqlite/blacklist data, mount `/home/py-kms/db` as a Docker volume.
+- Blacklist entries can be managed in the WebUI settings page.
 
 ## Documentation
-The wiki has been completly reworked and is now available on [readthedocs.io](https://py-kms.readthedocs.io/en/latest/). It should provide you all the necessary information about how to setup and to use _py-kms_ , all without clumping this readme. The documentation also houses more details about activation with _py-kms_ and how to get GVLK keys.
-       
-## Quick start
-- To start the server, execute `python3 pykms_Server.py [IPADDRESS] [PORT]`, the default _IPADDRESS_ is `::` ( all interfaces ) and the default _PORT_ is `1688`. Note that both the address and port are optional. It's allowed to use IPv4 and IPv6 addresses. If you have a IPv6-capable dual-stack OS, a dual-stack socket is created when using a IPv6 address. **In case your OS does not support IPv6, make sure to explicitly specify the legacy IPv4 of `0.0.0.0`!**
-- To start the server automatically using Docker, execute `docker run -d --name py-kms --restart always -p 1688:1688 ghcr.io/py-kms-organization/py-kms`.
-- To show the help pages type: `python3 pykms_Server.py -h` and `python3 pykms_Client.py -h`.
-- To protect the WebUI with a login, set `PYKMS_WEBUI_PASSWORD` (required), plus optional `PYKMS_WEBUI_USERNAME` (default `admin`) and `PYKMS_WEBUI_SECRET_KEY`.
-- To persist and manage blocked source IPs/ranges from the WebUI settings page, use `PYKMS_BLACKLIST_PATH` (default `/home/py-kms/db/pykms_blacklist.txt`).
-- Blacklist blocked-attempt counters are persisted in `PYKMS_BLACKLIST_STATS_PATH` (default `/home/py-kms/db/pykms_blacklist_stats.json`).
-- To backfill older sqlite rows with missing source IPs at startup, configure `PYKMS_SOURCEIP_BACKFILL_*` variables (see `docker/README.md`).
+Full documentation is available on Read the Docs:
+- https://py-kms.readthedocs.io/en/latest/
 
 ## License
-   - _py-kms_ is [![Unlicense](https://img.shields.io/badge/license-unlicense-lightgray.svg)](./LICENSE)
+- `py-kms` is released under [The Unlicense](./LICENSE)
