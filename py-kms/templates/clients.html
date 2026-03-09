@@ -3,103 +3,134 @@
 {% block title %}clients{% endblock %}
 
 {% block style %}
-th {
-    white-space: nowrap;
+.client-row[hidden] {
+    display: none;
 }
 {% endblock %}
 
 {% block content %}
 {% if error %}
-<article class="message is-danger">
-    <div class="message-header">
-        Whoops! Something went wrong...
-    </div>
-    <div class="message-body">
-        {{ error }}
-    </div>
-</article>
+<div class="empty-state">
+    <h2 class="page-title">Database Error</h2>
+    <p class="page-subtitle">{{ error }}</p>
+</div>
 {% else %}
-<nav class="level">
-    <div class="level-item has-text-centered">
-        <div>
-            <p class="heading">Clients</p>
-            <p class="title">{{ count_clients }}</p>
-        </div>
+<div class="section-head">
+    <div>
+        <h2 class="page-title">Client Activations</h2>
+        <p class="page-subtitle">Live overview of all unique clients that contacted this KMS instance.</p>
     </div>
-    <div class="level-item has-text-centered">
-        <div>
-            <p class="heading">Windows</p>
-            <p class="title">{{ count_clients_windows }}</p>
-        </div>
-    </div>
-    <div class="level-item has-text-centered">
-        <div>
-            <p class="heading">Office</p>
-            <p class="title">{{ count_clients_office }}</p>
-        </div>
-    </div>
-    <div class="level-item has-text-centered">
-        <div>
-            <p class="heading">Products</p>
-            <p class="title"><a href="/products">{{ count_projects }}</a></p>
-        </div>
-    </div>
-</nav>
+    <p class="small-note">Sorted as stored in sqlite.</p>
+</div>
 
-<hr>
+<div class="stats-grid">
+    <div class="stat-card">
+        <p class="stat-label">Clients</p>
+        <p class="stat-value">{{ count_clients }}</p>
+    </div>
+    <div class="stat-card">
+        <p class="stat-label">Windows</p>
+        <p class="stat-value">{{ count_clients_windows }}</p>
+    </div>
+    <div class="stat-card">
+        <p class="stat-label">Office</p>
+        <p class="stat-value">{{ count_clients_office }}</p>
+    </div>
+    <div class="stat-card">
+        <p class="stat-label">Products</p>
+        <p class="stat-value"><a href="/products">{{ count_projects }}</a></p>
+    </div>
+</div>
 
 {% if clients %}
-<table class="table is-striped is-hoverable is-fullwidth">
-    <thead>
-        <tr>
-            <th>Client ID</th>
-            <th>Machine Name</th>
-            <th>Application ID</th>
-            <th><abbr title="Stock Keeping Unit">SKU</abbr> ID</th>
-            <th>License Status</th>
-            <th>Source IP</th>
-            <th>Last Seen</th>
-            <th>KMS <abbr title="Enhanced Privacy ID">EPID</abbr></th>
-            <th>Seen Count</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for client in clients %}
-        <tr>
-            <th><pre class="clientMachineId">{{ client.clientMachineId }}</pre></th>
-            <td class="machineName">
-                {% if client.machineName | length > 16 %}
-                <abbr title="{{ client.machineName }}">{{ client.machineName | truncate(16, True, '...') }}</abbr>
-                {% else %}
-                {{ client.machineName }}
-                {% endif %}
-            </td>
-            <td>{{ client.applicationId }}</td>
-            <td>{{ client.skuId }}</td>
-            <td>{{ client.licenseStatus }}</td>
-            <td>{{ client.sourceIp }}</td>
-            <td class="convert_timestamp">{{ client.lastRequestTime }}</td>
-            <td>
-                {% if client.kmsEpid | length > 16 %}
-                <abbr title="{{ client.kmsEpid }}">{{ client.kmsEpid | truncate(16, True, '...') }}</abbr>
-                {% else %}
-                {{ client.kmsEpid }}
-                {% endif %}
-            </td>
-            <td>{{ client.requestCount }}</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+<div class="toolbar">
+    <div class="search-wrap">
+        <input id="clientSearch" class="search-input" type="search" placeholder="Search machine, app, product, id or source ip">
+    </div>
+    <span id="clientCounter" class="muted">{{ count_clients }} visible</span>
+</div>
+
+<div class="table-shell">
+    <table class="compact-table">
+        <thead>
+            <tr>
+                <th>Client ID</th>
+                <th>Machine</th>
+                <th>Application</th>
+                <th><abbr title="Stock Keeping Unit">SKU</abbr></th>
+                <th>License</th>
+                <th>Source IP</th>
+                <th>Last Seen</th>
+                <th>KMS <abbr title="Enhanced Privacy ID">EPID</abbr></th>
+                <th>Seen</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for client in clients %}
+            {% set status = client.licenseStatus | lower %}
+            <tr class="client-row" data-search="{{ client.clientMachineId }} {{ client.machineName }} {{ client.applicationId }} {{ client.skuId }} {{ client.sourceIp }} {{ client.kmsEpid }}">
+                <td><pre class="text-mono">{{ client.clientMachineId }}</pre></td>
+                <td title="{{ client.machineName }}">{{ client.machineName }}</td>
+                <td><span class="badge-chip brand">{{ client.applicationId }}</span></td>
+                <td title="{{ client.skuId }}">{{ client.skuId | truncate(38, True, '...') }}</td>
+                <td>
+                    {% if 'licensed' in status %}
+                    <span class="badge-chip brand">{{ client.licenseStatus }}</span>
+                    {% elif 'notification' in status or 'grace' in status %}
+                    <span class="badge-chip warn">{{ client.licenseStatus }}</span>
+                    {% else %}
+                    <span class="badge-chip slate">{{ client.licenseStatus }}</span>
+                    {% endif %}
+                </td>
+                <td>
+                    {% if client.sourceIp %}
+                    <span class="badge-chip slate">{{ client.sourceIp }}</span>
+                    {% else %}
+                    <span class="badge-chip danger">unknown</span>
+                    {% endif %}
+                </td>
+                <td class="convert_timestamp">{{ client.lastRequestTime }}</td>
+                <td title="{{ client.kmsEpid }}">
+                    {% if client.kmsEpid %}
+                    <pre class="text-mono">{{ client.kmsEpid }}</pre>
+                    {% else %}
+                    <span class="muted">n/a</span>
+                    {% endif %}
+                </td>
+                <td>{{ client.requestCount }}</td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
 {% else %}
-<article class="message is-warning">
-    <div class="message-header">
-        <p>Whoops?</p>
-    </div>
-    <div class="message-body">
-        This page seems to be empty, because no clients are available. Try to use the server with a compartible client to add it to the database.
-    </div>
-</article>
+<div class="empty-state">
+    <h3 class="page-title">No Clients Yet</h3>
+    <p class="page-subtitle">No activation clients found in sqlite. Trigger at least one KMS request to populate this table.</p>
+</div>
 {% endif %}
 {% endif %}
+
+<script>
+(() => {
+    const input = document.getElementById('clientSearch');
+    const rows = Array.from(document.querySelectorAll('.client-row'));
+    const counter = document.getElementById('clientCounter');
+    if(!input || rows.length === 0 || !counter) return;
+
+    const update = () => {
+        const term = input.value.trim().toLowerCase();
+        let visible = 0;
+        for(const row of rows) {
+            const haystack = (row.dataset.search || '').toLowerCase();
+            const show = term === '' || haystack.includes(term);
+            row.hidden = !show;
+            if(show) visible++;
+        }
+        counter.textContent = `${visible} visible`;
+    };
+
+    input.addEventListener('input', update);
+})();
+</script>
 {% endblock %}

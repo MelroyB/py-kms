@@ -2,50 +2,49 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>py-kms {% block title %}{% endblock %}</title>
     <link rel="stylesheet" href="{{ url_for('static', filename= 'css/bulma.min.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename= 'css/webui.css') }}">
     <style>
-        #content {
-            margin: 1em;
-            overflow-x: auto;
-        }
-        pre {
-            overflow-x: auto;
-            padding: 0.5em;
-        }
-        {% if path != '/' %}
-        div.backtohome {
-            display: flex;
-            justify-content: center;
-        }
-        {% endif %}
         {% block style %}{% endblock %}
     </style>
 </head>
-<body>
-    <div id="content">
-        {% block content %}{% endblock %}
+<body class="app-shell">
+    <span class="ambient ambient-1"></span>
+    <span class="ambient ambient-2"></span>
+    <span class="ambient ambient-3"></span>
 
-        {% if path != '/' %}
-        <div class="block backtohome">
-            <a class="button is-normal is-responsive" href="/">
-                Back to home
-            </a>
-        </div>
-        {% endif %}
+    <div class="shell-wrapper">
+        <header class="app-header">
+            <div class="brand-line">
+                <div class="brand">
+                    <span class="brand-chip">Volume Activation Console</span>
+                    <h1 class="brand-title">py-kms Web UI</h1>
+                    <p class="brand-subtitle">Activation traffic, product catalog and runtime details in one view.</p>
+                </div>
+                <span class="status-pill">Server online</span>
+            </div>
+            <nav class="nav-pills">
+                <a href="/" class="nav-pill {% if path == '/' %}is-active{% endif %}">Clients</a>
+                <a href="/products" class="nav-pill {% if path == '/products/' %}is-active{% endif %}">Products</a>
+                <a href="/license" class="nav-pill {% if path == '/license/' %}is-active{% endif %}">License</a>
+            </nav>
+        </header>
+
+        <main class="content-surface">
+            {% block content %}{% endblock %}
+        </main>
+
+        <footer class="site-footer">
+            <strong>py-kms</strong> is online since <span class="convert_timestamp">{{ start_time }}</span>.
+            This instance was accessed {{ get_serve_count() }} times.
+            <a href="/license">License</a>
+            {% if version_info %}
+            <br>This instance is running "{{ version_info['hash'] }}" on branch "{{ version_info['branch'] }}".
+            {% endif %}
+        </footer>
     </div>
-
-    <footer class="footer">
-        <div class="content has-text-centered">
-            <p>
-                <strong>py-kms</strong> is online since <span class="convert_timestamp">{{ start_time }}</span>.
-                This instance was accessed {{ get_serve_count() }} times. View this softwares license <a href="/license">here</a>.
-                {% if version_info %}
-                <br>This instance is running version "{{ version_info['hash'] }}" from branch "{{ version_info['branch'] }}" of py-kms.
-                {% endif %}
-            </p>
-        </div>
-    </footer>
 
     <script>
         for(let element of document.getElementsByClassName('convert_timestamp')) {

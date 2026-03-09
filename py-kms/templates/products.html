@@ -1,67 +1,64 @@
 {% extends 'base.html' %}
 
-{% block title %}clients{% endblock %}
+{% block title %}products{% endblock %}
 
 {% block content %}
-<nav class="level">
-    <div class="level-item has-text-centered">
-        <div>
-            <p class="heading">Products</p>
-            <p class="title">{{ count_products + filtered }}</p>
-        </div>
+<div class="section-head">
+    <div>
+        <h2 class="page-title">Supported Products</h2>
+        <p class="page-subtitle">Complete product and GVLK catalog loaded from the KMS database definition.</p>
     </div>
-    <div class="level-item has-text-centered">
-        <div>
-            <p class="heading">Windows</p>
-            <p class="title">{{ count_products_windows }}</p>
-        </div>
+    <p class="small-note">Groups: {{ products | length }}</p>
+</div>
+
+<div class="stats-grid">
+    <div class="stat-card">
+        <p class="stat-label">Products</p>
+        <p class="stat-value">{{ count_products + filtered }}</p>
     </div>
-    <div class="level-item has-text-centered">
-        <div>
-            <p class="heading">Office</p>
-            <p class="title">{{ count_products_office }}</p>
-        </div>
+    <div class="stat-card">
+        <p class="stat-label">Windows</p>
+        <p class="stat-value">{{ count_products_windows }}</p>
     </div>
-    <div class="level-item has-text-centered">
-        <div>
-            <p class="heading"><abbr title="Empty GLVK or not recognized">Other</abbr></p>
-            <p class="title">{{ filtered }}</p>
-        </div>
+    <div class="stat-card">
+        <p class="stat-label">Office</p>
+        <p class="stat-value">{{ count_products_office }}</p>
     </div>
-</nav>
+    <div class="stat-card">
+        <p class="stat-label"><abbr title="Empty GLVK or not recognized">Other</abbr></p>
+        <p class="stat-value">{{ filtered }}</p>
+    </div>
+</div>
 
-<hr>
-
-<style scoped>
-    td.glvk {
-        width: 24rem;
-    }
-
-    pre.glvk {
-        width: min-content;
-    }
-</style>
-
-{% for group_name, group_products in products | dictsort %}
-<h1 class="title">{{ group_name }}</h1>
-<table class="table is-bordered is-striped is-hoverable is-fullwidth">
-    <thead>
-        <tr>
-            <th>Name</th>
-            <th class="glvk"><abbr title="Group Volume License Key">GVLK</abbr></th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for name, gvlk in group_products | dictsort %}
-        <tr>
-            <td>{{ name }}</td>
-            <td class="glvk">
-                {% if gvlk %}
-                <pre class="glvk">{{ gvlk }}</pre>{% endif %}
-            </td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
-{% endfor %}
+<div class="panel-group">
+    {% for group_name, group_products in products | dictsort %}
+    <section class="panel-card">
+        <h3 class="panel-title">{{ group_name }}</h3>
+        <div class="table-shell">
+            <table class="compact-table">
+                <thead>
+                    <tr>
+                        <th>Product Name</th>
+                        <th><abbr title="Group Volume License Key">GVLK</abbr></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for name, gvlk in group_products | dictsort %}
+                    <tr>
+                        <td>{{ name }}</td>
+                        <td>
+                            {% if gvlk %}
+                            <pre class="text-mono">{{ gvlk }}</pre>
+                            {% else %}
+                            <span class="badge-chip danger">missing</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </section>
+    {% endfor %}
+</div>
 {% endblock %}
