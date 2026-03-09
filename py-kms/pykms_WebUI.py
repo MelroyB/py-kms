@@ -1,4 +1,4 @@
-import os, uuid, datetime, hmac
+import os, uuid, datetime, hmac, threading
 from flask import Flask, render_template, request, redirect, url_for, session
 from pykms_Sql import sql_get_all, sql_delete
 from pykms_DB2Dict import kmsDB2Dict
@@ -56,6 +56,23 @@ _webui_auth_username = os.environ.get('PYKMS_WEBUI_USERNAME', 'admin')
 _webui_auth_enabled = bool(_webui_auth_password)
 if _webui_auth_enabled:
     app.secret_key = os.environ.get('PYKMS_WEBUI_SECRET_KEY') or uuid.uuid5(uuid.NAMESPACE_OID, _webui_auth_password).hex
+
+_cookie_secure_env = os.environ.get('PYKMS_WEBUI_COOKIE_SECURE', 'false').strip().lower()
+app.config.update(
+    SESSION_COOKIE_HTTPONLY = True,
+    SESSION_COOKIE_SAMESITE = os.environ.get('PYKMS_WEBUI_COOKIE_SAMESITE', 'Lax'),
+    SESSION_COOKIE_SECURE = _cookie_secure_env in ('1', 'true', 'yes', 'on'),
+    PERMANENT_SESSION_LIFETIME = datetime.timedelta(
+        seconds = max(60, int(os.environ.get('PYKMS_WEBUI_SESSION_TTL_SECONDS', '43200')))
+    )
+)
+
+_login_rate_limit_attempts = max(1, int(os.environ.get('PYKMS_WEBUI_LOGIN_RATE_LIMIT_ATTEMPTS', '5')))
+_login_rate_limit_window_seconds = max(10, int(os.environ.get('PYKMS_WEBUI_LOGIN_RATE_LIMIT_WINDOW_SECONDS', '300')))
+_login_rate_limit_block_seconds = max(10, int(os.environ.get('PYKMS_WEBUI_LOGIN_RATE_LIMIT_BLOCK_SECONDS', '900')))
+_login_attempt_state = {} # {ip: {'attempts': [datetime], 'blocked_until': datetime|None}}
+_login_attempt_state_lock = threading.Lock()
+
 app.jinja_env.globals['webui_auth_enabled'] = _webui_auth_enabled
 app.jinja_env.globals['webui_auth_user'] = _webui_auth_username
 app.jinja_env.globals['blacklist_path'] = get_blacklist_path()
@@ -80,12 +97,71 @@ def _set_ui_message(level, message):
     session['ui_message_level'] = level
     session['ui_message'] = message
 
+def _get_client_ip():
+    return normalize_ip_text(request.headers.get('X-Forwarded-For', request.remote_addr or '').split(',')[0].strip())
+
+def _ensure_csrf_token():
+    token = session.get('pykms_csrf_token')
+    if not token:
+        token = uuid.uuid4().hex
+        session['pykms_csrf_token'] = token
+    return token
+
+def _validate_csrf_token():
+    session_token = session.get('pykms_csrf_token', '')
+    request_token = request.form.get('csrf_token', '')
+    return bool(session_token) and bool(request_token) and hmac.compare_digest(session_token, request_token)
+
+def _prune_login_state(now_utc):
+    stale_before = now_utc - datetime.timedelta(seconds = _login_rate_limit_window_seconds * 4)
+    stale_ips = []
+    for ip, state in _login_attempt_state.items():
+        state['attempts'] = [ts for ts in state['attempts'] if ts >= stale_before]
+        if state['blocked_until'] and state['blocked_until'] <= now_utc and not state['attempts']:
+            stale_ips.append(ip)
+    for ip in stale_ips:
+        _login_attempt_state.pop(ip, None)
+
+def _is_login_rate_limited(ip):
+    now_utc = datetime.datetime.utcnow()
+    with _login_attempt_state_lock:
+        _prune_login_state(now_utc)
+        state = _login_attempt_state.get(ip)
+        if state and state['blocked_until'] and state['blocked_until'] > now_utc:
+            return True
+        return False
+
+def _record_login_failure(ip):
+    now_utc = datetime.datetime.utcnow()
+    with _login_attempt_state_lock:
+        _prune_login_state(now_utc)
+        state = _login_attempt_state.setdefault(ip, {'attempts': [], 'blocked_until': None})
+        state['attempts'] = [ts for ts in state['attempts'] if ts >= now_utc - datetime.timedelta(seconds = _login_rate_limit_window_seconds)]
+        state['attempts'].append(now_utc)
+        if len(state['attempts']) >= _login_rate_limit_attempts:
+            state['blocked_until'] = now_utc + datetime.timedelta(seconds = _login_rate_limit_block_seconds)
+            state['attempts'].clear()
+
+def _clear_login_failures(ip):
+    with _login_attempt_state_lock:
+        _login_attempt_state.pop(ip, None)
+
+@app.context_processor
+def _inject_csrf_token():
+    return {'csrf_token': _ensure_csrf_token()}
+
 @app.before_request
 def _protect_webui():
-    if not _webui_auth_enabled:
-        return None
     public_endpoints = {'readyz', 'livez', 'login', 'logout', 'static'}
     if request.endpoint is None:
+        return None
+
+    csrf_protected_endpoints = {'login', 'logout', 'settings', 'clients_action'}
+    if request.method == 'POST' and request.endpoint in csrf_protected_endpoints:
+        if not _validate_csrf_token():
+            return 'Invalid CSRF token.', 400
+
+    if not _webui_auth_enabled:
         return None
     if request.endpoint in public_endpoints:
         return None
@@ -106,13 +182,26 @@ def login():
         return redirect(next_url)
 
     if request.method == 'POST':
+        client_ip = _get_client_ip()
+        if _is_login_rate_limited(client_ip):
+            error = 'Too many failed login attempts. Try again later.'
+            return render_template(
+                'login.html',
+                path='/login/',
+                error=error,
+                next_url=next_url
+            ), 429
+
         username = request.form.get('username', '')
         password = request.form.get('password', '')
         if hmac.compare_digest(username, _webui_auth_username) and hmac.compare_digest(password, _webui_auth_password):
             session.clear()
             session['pykms_webui_auth'] = True
             session['pykms_webui_user'] = _webui_auth_username
+            session['pykms_csrf_token'] = uuid.uuid4().hex
+            _clear_login_failures(client_ip)
             return redirect(next_url)
+        _record_login_failure(client_ip)
         error = 'Invalid username or password.'
 
     return render_template(

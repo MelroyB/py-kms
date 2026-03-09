@@ -39,6 +39,7 @@
 
 <section class="panel-card">
     <form method="post" action="/settings" class="login-form">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
         <div>
             <label class="login-label" for="blacklist_entries">Blacklist Rules</label>
             <textarea class="login-input" id="blacklist_entries" name="blacklist_entries" rows="14" spellcheck="false">{{ blacklist_entries }}</textarea>

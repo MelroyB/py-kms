@@ -29,6 +29,7 @@
                     {% if session.get('pykms_webui_auth') %}
                     <span class="status-pill">Signed in as {{ session.get('pykms_webui_user', webui_auth_user) }}</span>
                     <form action="/logout" method="post" class="logout-form">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                         <button type="submit" class="logout-button">Logout</button>
                     </form>
                     {% else %}

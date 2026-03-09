@@ -100,6 +100,7 @@
                 <td>
                     <div class="row-actions">
                         <form method="post" action="/clients/action" class="row-action-form" onsubmit="return confirm('Delete this client entry?');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                             <input type="hidden" name="action" value="delete">
                             <input type="hidden" name="clientMachineId" value="{{ client.clientMachineId }}">
                             <input type="hidden" name="appId" value="{{ client.applicationId }}">
@@ -107,6 +108,7 @@
                             <button type="submit" class="row-action-btn row-action-delete">Delete</button>
                         </form>
                         <form method="post" action="/clients/action" class="row-action-form" onsubmit="return confirm('Block source IP and delete this client entry?');">
+                            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
                             <input type="hidden" name="action" value="block">
                             <input type="hidden" name="clientMachineId" value="{{ client.clientMachineId }}">
                             <input type="hidden" name="appId" value="{{ client.applicationId }}">
