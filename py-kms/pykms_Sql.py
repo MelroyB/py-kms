@@ -3,6 +3,7 @@
 import datetime
 import os
 import logging
+from pykms_Blacklist import normalize_ip_text
 
 # sqlite3 is optional.
 try:
@@ -47,6 +48,7 @@ def sql_get_all(dbName):
                 cur.execute("SELECT clientMachineId, machineName, applicationId, skuId, licenseStatus, lastRequestTime, kmsEpid, requestCount, sourceIp FROM clients")
                 clients = []
                 for row in cur.fetchall():
+                        source_ip = normalize_ip_text(row[8] or '')
                         clients.append({
                                 'clientMachineId': row[0],
                                 'machineName': row[1],
@@ -56,7 +58,7 @@ def sql_get_all(dbName):
                                 'lastRequestTime': datetime.datetime.fromtimestamp(row[5]).isoformat(),
                                 'kmsEpid': row[6],
                                 'requestCount': row[7],
-                                'sourceIp': row[8] or ''
+                                'sourceIp': source_ip
                         })
                 return clients
 

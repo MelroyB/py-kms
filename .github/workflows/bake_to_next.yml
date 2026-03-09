@@ -22,7 +22,7 @@ jobs:
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
         with:
-          platforms: all
+          platforms: arm64,arm
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
       - name: Login to DockerHub
@@ -45,6 +45,9 @@ jobs:
           file: ./docker/docker-py3-kms/Dockerfile
           platforms: linux/amd64,linux/386,linux/arm64/v8,linux/arm/v7,linux/arm/v6
           push: true
+          provenance: false
+          cache-from: type=gha,scope=pykms-next-full
+          cache-to: type=gha,scope=pykms-next-full,mode=max
           tags: ghcr.io/${{ env.IMAGE_OWNER_LC }}/py-kms:python3-next
           build-args: |
             BUILD_COMMIT=${{ github.sha }}
@@ -57,6 +60,9 @@ jobs:
           file: ./docker/docker-py3-kms/Dockerfile
           platforms: linux/amd64,linux/386,linux/arm64/v8,linux/arm/v7,linux/arm/v6
           push: true
+          provenance: false
+          cache-from: type=gha,scope=pykms-next-full
+          cache-to: type=gha,scope=pykms-next-full,mode=max
           tags: ${{ secrets.DOCKER_USERNAME }}/py-kms:python3-next,ghcr.io/${{ env.IMAGE_OWNER_LC }}/py-kms:python3-next
           build-args: |
             BUILD_COMMIT=${{ github.sha }}
@@ -69,6 +75,9 @@ jobs:
           file: ./docker/docker-py3-kms-minimal/Dockerfile
           platforms: linux/amd64,linux/386,linux/arm64/v8,linux/arm/v7,linux/arm/v6
           push: true
+          provenance: false
+          cache-from: type=gha,scope=pykms-next-minimal
+          cache-to: type=gha,scope=pykms-next-minimal,mode=max
           tags: ghcr.io/${{ env.IMAGE_OWNER_LC }}/py-kms:latest-next,ghcr.io/${{ env.IMAGE_OWNER_LC }}/py-kms:minimal-next
           build-args: |
             BUILD_COMMIT=${{ github.sha }}
@@ -81,6 +90,9 @@ jobs:
           file: ./docker/docker-py3-kms-minimal/Dockerfile
           platforms: linux/amd64,linux/386,linux/arm64/v8,linux/arm/v7,linux/arm/v6
           push: true
+          provenance: false
+          cache-from: type=gha,scope=pykms-next-minimal
+          cache-to: type=gha,scope=pykms-next-minimal,mode=max
           tags: ${{ secrets.DOCKER_USERNAME }}/py-kms:latest-next,ghcr.io/${{ env.IMAGE_OWNER_LC }}/py-kms:latest-next,${{ secrets.DOCKER_USERNAME }}/py-kms:minimal-next,ghcr.io/${{ env.IMAGE_OWNER_LC }}/py-kms:minimal-next
           build-args: |
             BUILD_COMMIT=${{ github.sha }}
