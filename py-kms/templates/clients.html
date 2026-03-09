@@ -23,6 +23,12 @@
     <p class="small-note">Sorted as stored in sqlite.</p>
 </div>
 
+{% if ui_message %}
+<div class="panel-card is-{{ ui_message_level }}">
+    <p class="small-note text-{{ ui_message_level }}">{{ ui_message }}</p>
+</div>
+{% endif %}
+
 <div class="stats-grid">
     <div class="stat-card">
         <p class="stat-label">Clients</p>
@@ -63,6 +69,7 @@
                 <th>Last Seen</th>
                 <th>KMS <abbr title="Enhanced Privacy ID">EPID</abbr></th>
                 <th>Seen</th>
+                <th>Actions</th>
             </tr>
         </thead>
         <tbody>
@@ -98,6 +105,24 @@
                     {% endif %}
                 </td>
                 <td>{{ client.requestCount }}</td>
+                <td>
+                    <div class="row-actions">
+                        <form method="post" action="/clients/action" class="row-action-form" onsubmit="return confirm('Delete this client entry?');">
+                            <input type="hidden" name="action" value="delete">
+                            <input type="hidden" name="clientMachineId" value="{{ client.clientMachineId }}">
+                            <input type="hidden" name="appId" value="{{ client.applicationId }}">
+                            <input type="hidden" name="sourceIp" value="{{ client.sourceIp }}">
+                            <button type="submit" class="row-action-btn row-action-delete">Delete</button>
+                        </form>
+                        <form method="post" action="/clients/action" class="row-action-form" onsubmit="return confirm('Block source IP and delete this client entry?');">
+                            <input type="hidden" name="action" value="block">
+                            <input type="hidden" name="clientMachineId" value="{{ client.clientMachineId }}">
+                            <input type="hidden" name="appId" value="{{ client.applicationId }}">
+                            <input type="hidden" name="sourceIp" value="{{ client.sourceIp }}">
+                            <button type="submit" class="row-action-btn row-action-block" {% if not client.sourceIp %}disabled{% endif %}>Block</button>
+                        </form>
+                    </div>
+                </td>
             </tr>
             {% endfor %}
         </tbody>

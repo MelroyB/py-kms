@@ -23,7 +23,7 @@ from pykms_Misc import kms_parser_get, kms_parser_check_optionals, kms_parser_ch
 from pykms_Format import enco, deco, pretty_printer, justify
 from pykms_Connect import MultipleListener
 from pykms_Sql import sql_initialize
-from pykms_Blacklist import get_blacklist_path, parse_blacklist_lines, is_ip_blocked
+from pykms_Blacklist import get_blacklist_path, parse_blacklist_lines, find_matching_rule, normalize_ip_text, record_blacklist_attempt
 
 srv_version             = "py-kms_2020-10-01"
 __license__             = "The Unlicense"
@@ -207,10 +207,10 @@ def _blacklist_reload_if_needed():
                                 loggersrv.warning("Blacklist parse error: %s", error)
                 loggersrv.info("Blacklist loaded from %s (%d entries).", path, len(entries))
 
-def _blacklist_is_blocked(ip_value):
+def _blacklist_get_match(ip_value):
         _blacklist_reload_if_needed()
         with _blacklist_lock:
-                return is_ip_blocked(ip_value, _blacklist_cache['rules'])
+                return find_matching_rule(ip_value, _blacklist_cache['rules'])
 
 def _str2bool(v):
     if isinstance(v, bool):
@@ -518,12 +518,18 @@ def server_main_terminal():
 
 class kmsServerHandler(socketserver.BaseRequestHandler):
         def setup(self):
-                self.is_blacklisted = _blacklist_is_blocked(self.client_address[0])
+                self.client_ip = normalize_ip_text(self.client_address[0])
+                self.matched_blacklist_rule = _blacklist_get_match(self.client_ip)
+                self.is_blacklisted = bool(self.matched_blacklist_rule)
                 if self.is_blacklisted:
-                        loggersrv.warning("Connection blocked by blacklist: %s:%d" %(self.client_address[0], self.client_address[1]))
+                        try:
+                                record_blacklist_attempt(self.client_ip, self.matched_blacklist_rule)
+                        except Exception as e:
+                                loggersrv.warning("Failed to store blacklist attempt stats: %s", e)
+                        loggersrv.warning("Connection blocked by blacklist: %s:%d" %(self.client_ip, self.client_address[1]))
                         self.request.close()
                 else:
-                        loggersrv.info("Connection accepted: %s:%d" %(self.client_address[0], self.client_address[1]))
+                        loggersrv.info("Connection accepted: %s:%d" %(self.client_ip, self.client_address[1]))
 
         def handle(self):
                 if getattr(self, 'is_blacklisted', False):
@@ -547,13 +553,13 @@ class kmsServerHandler(socketserver.BaseRequestHandler):
                                 loggersrv.info("RPC bind request received.")
                                 pretty_printer(num_text = [-2, 2], where = "srv")
                                 request_config = srv_config.copy()
-                                request_config['raddr'] = self.client_address
+                                request_config['raddr'] = (self.client_ip, self.client_address[1])
                                 handler = pykms_RpcBind.handler(self.data, request_config)
                         elif packetType == rpcBase.packetType['request']:
                                 loggersrv.info("Received activation request.")
                                 pretty_printer(num_text = [-2, 13], where = "srv")
                                 request_config = srv_config.copy()
-                                request_config['raddr'] = self.client_address
+                                request_config['raddr'] = (self.client_ip, self.client_address[1])
                                 handler = pykms_RpcRequest.handler(self.data, request_config)
                         else:
                                 pretty_printer(log_obj = loggersrv.error,
@@ -580,7 +586,7 @@ class kmsServerHandler(socketserver.BaseRequestHandler):
 
         def finish(self):
                 self.request.close()
-                loggersrv.info("Connection closed: %s:%d" %(self.client_address[0], self.client_address[1]))
+                loggersrv.info("Connection closed: %s:%d" %(getattr(self, 'client_ip', self.client_address[0]), self.client_address[1]))
 
 
 serverqueue = Queue.Queue(maxsize = 0)

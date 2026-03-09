@@ -1,8 +1,8 @@
 import os, uuid, datetime, hmac
 from flask import Flask, render_template, request, redirect, url_for, session
-from pykms_Sql import sql_get_all
+from pykms_Sql import sql_get_all, sql_delete
 from pykms_DB2Dict import kmsDB2Dict
-from pykms_Blacklist import get_blacklist_path, parse_blacklist_text
+from pykms_Blacklist import get_blacklist_path, parse_blacklist_text, normalize_ip_text, is_ip_blocked, load_blacklist_stats
 
 def _random_uuid():
     return str(uuid.uuid4()).replace('-', '_')
@@ -75,6 +75,10 @@ def _env_check():
 
 def _is_safe_next_url(path):
     return isinstance(path, str) and path.startswith('/') and not path.startswith('//')
+
+def _set_ui_message(level, message):
+    session['ui_message_level'] = level
+    session['ui_message'] = message
 
 @app.before_request
 def _protect_webui():
@@ -164,16 +168,87 @@ def settings():
             except Exception as e:
                 error = f'Failed to save blacklist: {e}'
 
+    blacklist_stats = load_blacklist_stats()
+    stats_by_rule = sorted(blacklist_stats.get('by_rule', {}).items(), key = lambda kv: kv[1], reverse = True)
+    stats_by_source_ip = sorted(blacklist_stats.get('by_source_ip', {}).items(), key = lambda kv: kv[1], reverse = True)
+
     return render_template(
         'settings.html',
         path='/settings/',
         blacklist_path=blacklist_path,
         blacklist_entries=entries_text,
         blacklist_count=len(active_entries),
+        blacklist_stats=blacklist_stats,
+        stats_by_rule=stats_by_rule,
+        stats_by_source_ip=stats_by_source_ip,
         error=error,
         success=success,
         parse_errors=parse_errors
     )
+
+@app.route('/clients/action', methods = ['POST'])
+def clients_action():
+    _increase_serve_count()
+    dbPath = os.environ.get(_dbEnvVarName)
+    if not dbPath:
+        _set_ui_message('danger', f'Action failed: environment variable missing ({_dbEnvVarName}).')
+        return redirect(url_for('root'))
+
+    action = request.form.get('action', '').strip().lower()
+    clientMachineId = request.form.get('clientMachineId', '').strip()
+    appId = request.form.get('appId', '').strip()
+    sourceIp = request.form.get('sourceIp', '').strip()
+
+    if action not in ['delete', 'block']:
+        _set_ui_message('danger', 'Action failed: invalid action.')
+        return redirect(url_for('root'))
+    if not clientMachineId or not appId:
+        _set_ui_message('danger', 'Action failed: missing client identifiers.')
+        return redirect(url_for('root'))
+
+    if action == 'block':
+        normalized_source_ip = normalize_ip_text(sourceIp)
+        _, parse_errors_ip, parsed_ip_entries = parse_blacklist_text(normalized_source_ip)
+        if (not normalized_source_ip) or parse_errors_ip or len(parsed_ip_entries) == 0:
+            _set_ui_message('danger', 'Block failed: client source IP is missing or invalid.')
+            return redirect(url_for('root'))
+
+        blacklist_path = get_blacklist_path()
+        existing_text = ''
+        if os.path.isfile(blacklist_path):
+            with open(blacklist_path, 'r') as f:
+                existing_text = f.read()
+        existing_rules, parse_errors_existing, existing_entries = parse_blacklist_text(existing_text)
+        if parse_errors_existing:
+            _set_ui_message('danger', 'Block failed: current blacklist file contains invalid rules. Fix settings first.')
+            return redirect(url_for('root'))
+
+        if not is_ip_blocked(normalized_source_ip, existing_rules):
+            existing_entries.append(normalized_source_ip)
+        try:
+            target_dir = os.path.dirname(blacklist_path)
+            if target_dir:
+                os.makedirs(target_dir, exist_ok = True)
+            with open(blacklist_path, 'w') as f:
+                payload = '\n'.join(existing_entries)
+                if payload:
+                    payload += '\n'
+                f.write(payload)
+        except Exception as e:
+            _set_ui_message('danger', f'Block failed while saving blacklist: {e}')
+            return redirect(url_for('root'))
+
+    deleted_rows = sql_delete(dbPath, clientMachineId, appId)
+    if deleted_rows and action == 'block':
+        _set_ui_message('success', f'Blocked {sourceIp} and deleted client entry.')
+    elif deleted_rows and action == 'delete':
+        _set_ui_message('success', 'Client entry deleted.')
+    elif action == 'block':
+        _set_ui_message('warning', f'Blocked {sourceIp}, but client entry was not found in sqlite.')
+    else:
+        _set_ui_message('warning', 'Client entry was not found in sqlite.')
+
+    return redirect(url_for('root'))
 
 @app.route('/')
 def root():
@@ -195,11 +270,15 @@ def root():
     countClients = len(clients) if clients else 0
     countClientsWindows = len([c for c in clients if c['applicationId'] == 'Windows']) if clients else 0
     countClientsOffice = countClients - countClientsWindows
+    ui_message = session.pop('ui_message', None)
+    ui_message_level = session.pop('ui_message_level', 'success')
     return render_template(
         'clients.html',
         path='/',
         error=error,
         clients=clients,
+        ui_message=ui_message,
+        ui_message_level=ui_message_level,
         count_clients=countClients,
         count_clients_windows=countClientsWindows,
         count_clients_office=countClientsOffice,

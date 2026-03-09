@@ -581,12 +581,78 @@ textarea.login-input {
     background: #ffe9e7;
 }
 
+.panel-card.is-warning {
+    border-color: #efd9a4;
+    background: #fff5df;
+}
+
 .text-success {
     color: #0e5da8;
 }
 
 .text-danger {
     color: #9a312c;
+}
+
+.text-warning {
+    color: #8d6110;
+}
+
+.row-actions {
+    display: flex;
+    gap: 0.35rem;
+    flex-wrap: wrap;
+}
+
+.row-action-form {
+    margin: 0;
+}
+
+.row-action-btn {
+    border: 1px solid #c5d6ed;
+    border-radius: 8px;
+    background: #ffffff;
+    color: #183a64;
+    font: inherit;
+    font-size: 0.76rem;
+    font-weight: 700;
+    padding: 0.2rem 0.5rem;
+    cursor: pointer;
+    transition: border-color 0.2s ease, background 0.2s ease;
+}
+
+.row-action-btn:hover {
+    border-color: #7cb2f0;
+    background: #f1f7ff;
+}
+
+.row-action-btn:disabled {
+    border-color: #d3d9e4;
+    background: #f4f6f9;
+    color: #93a1b8;
+    cursor: not-allowed;
+}
+
+.row-action-delete {
+    border-color: #efc1be;
+    color: #9a312c;
+    background: #fff2f1;
+}
+
+.row-action-delete:hover {
+    border-color: #df8f89;
+    background: #ffe8e6;
+}
+
+.row-action-block {
+    border-color: #bed8fa;
+    color: #0e5da8;
+    background: #eef6ff;
+}
+
+.row-action-block:hover {
+    border-color: #74abeb;
+    background: #e6f1ff;
 }
 
 @keyframes float {

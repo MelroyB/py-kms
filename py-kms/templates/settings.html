@@ -46,4 +46,60 @@
         <button type="submit" class="login-button">Save Blacklist</button>
     </form>
 </section>
+
+<section class="panel-card">
+    <h3 class="panel-title">Blocked Attempt Stats</h3>
+    <p class="small-note">
+        Total blocked attempts: <strong>{{ blacklist_stats.total_blocked_attempts }}</strong>
+        {% if blacklist_stats.updated_at %}
+        <br>Last update: <span class="convert_timestamp">{{ blacklist_stats.updated_at }}</span>
+        {% endif %}
+    </p>
+
+    <div class="table-shell" style="margin-top:0.7rem;">
+        <table class="compact-table">
+            <thead>
+                <tr>
+                    <th>Rule</th>
+                    <th>Blocked Attempts</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for rule, count in stats_by_rule %}
+                <tr>
+                    <td><pre class="text-mono gvlk-key">{{ rule }}</pre></td>
+                    <td>{{ count }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="2"><span class="muted">No blocked attempts recorded yet.</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+    <div class="table-shell" style="margin-top:0.7rem;">
+        <table class="compact-table">
+            <thead>
+                <tr>
+                    <th>Source IP</th>
+                    <th>Blocked Attempts</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for source_ip, count in stats_by_source_ip %}
+                <tr>
+                    <td><pre class="text-mono gvlk-key">{{ source_ip }}</pre></td>
+                    <td>{{ count }}</td>
+                </tr>
+                {% else %}
+                <tr>
+                    <td colspan="2"><span class="muted">No blocked source IPs recorded yet.</span></td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
 {% endblock %}

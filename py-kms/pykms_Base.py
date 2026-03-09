@@ -11,6 +11,7 @@ from pykms_PidGenerator import epidGenerator
 from pykms_Filetimes import filetime_to_dt
 from pykms_Sql import sql_update, sql_update_epid
 from pykms_Format import justify, byterize, enco, deco, pretty_printer
+from pykms_Blacklist import normalize_ip_text
 
 #--------------------------------------------------------------------------------------------------------------------------------------------------------
 
@@ -192,7 +193,7 @@ could be detected as not genuine !{end}" %currentClientCount)
                         "licenseStatus" : kmsRequest.getLicenseStatus(),
                         "requestTime" : int(time.time()),
                         "kmsEpid" : None,
-                        "sourceIp" : str(self.srv_config.get('raddr', ('',))[0])
+                        "sourceIp" : normalize_ip_text(self.srv_config.get('raddr', ('',))[0])
                 }
 
                 loggersrv.info("Machine Name: %s" % infoDict["machineName"])

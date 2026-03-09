@@ -108,6 +108,22 @@ clientMachineId=:clientMachineId AND applicationId=:appId;", infoDict)
                     con.commit()
                     con.close()
 
+def sql_delete(dbName, clientMachineId, appId):
+        con = None
+        try:
+                con = sqlite3.connect(dbName)
+                cur = con.cursor()
+                _ensure_clients_schema(cur)
+                cur.execute("DELETE FROM clients WHERE clientMachineId=? AND applicationId=?;", (clientMachineId, appId))
+                return cur.rowcount
+        except sqlite3.Error as e:
+                pretty_printer(log_obj = loggersrv.error, to_exit = True,
+                               put_text = "{reverse}{red}{bold}Sqlite Error: %s. Exiting...{end}" %str(e))
+        finally:
+                if con:
+                        con.commit()
+                        con.close()
+
 def sql_update_epid(dbName, kmsRequest, response, appName):
         cmid = str(kmsRequest['clientMachineId'].get())
         con = None

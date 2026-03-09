@@ -19,6 +19,7 @@ ENV LOGSIZE=""
 ENV TZ=America/Chicago
 ENV WEBUI=1
 ENV PYKMS_BLACKLIST_PATH=/home/py-kms/db/pykms_blacklist.txt
+ENV PYKMS_BLACKLIST_STATS_PATH=/home/py-kms/db/pykms_blacklist_stats.json
 ENV PYKMS_SOURCEIP_BACKFILL_ON_START=1
 ENV PYKMS_SOURCEIP_BACKFILL_GLOB=/home/py-kms/db/pykms_logserver.log*
 

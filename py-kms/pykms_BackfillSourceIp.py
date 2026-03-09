@@ -5,6 +5,7 @@ import os
 import re
 import sqlite3
 from typing import Dict, Iterable, List, Optional, Tuple
+from pykms_Blacklist import normalize_ip_text
 
 
 CLIENT_ID_RE = re.compile(r"Client Machine ID:\s*([0-9a-fA-F-]{36})\s*$")
@@ -18,7 +19,7 @@ def parse_ip_from_hostport(hostport: str) -> Optional[str]:
     match = re.match(r"^(.+):(\d+)$", hostport.strip())
     if not match:
         return None
-    return match.group(1).strip()
+    return normalize_ip_text(match.group(1).strip())
 
 
 def extract_ip_map(log_paths: Iterable[str]) -> Dict[Tuple[str, str], str]:

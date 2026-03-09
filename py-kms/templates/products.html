@@ -2,6 +2,13 @@
 
 {% block title %}products{% endblock %}
 
+{% block style %}
+.product-row[hidden],
+.product-group[hidden] {
+    display: none;
+}
+{% endblock %}
+
 {% block content %}
 <div class="section-head">
     <div>
@@ -30,9 +37,16 @@
     </div>
 </div>
 
+<div class="toolbar">
+    <div class="search-wrap">
+        <input id="productSearch" class="search-input" type="search" placeholder="Search product or GVLK">
+    </div>
+    <span id="productCounter" class="muted">{{ count_products + filtered }} visible</span>
+</div>
+
 <div class="panel-group">
     {% for group_name, group_products in products | dictsort %}
-    <section class="panel-card">
+    <section class="panel-card product-group" data-group="{{ group_name }}">
         <h3 class="panel-title">{{ group_name }}</h3>
         <div class="table-shell">
             <table class="compact-table">
@@ -44,7 +58,7 @@
                 </thead>
                 <tbody>
                     {% for name, gvlk in group_products | dictsort %}
-                    <tr>
+                    <tr class="product-row" data-search="{{ group_name }} {{ name }} {{ gvlk }}">
                         <td>{{ name }}</td>
                         <td>
                             {% if gvlk %}
@@ -61,4 +75,42 @@
     </section>
     {% endfor %}
 </div>
+
+<script>
+(() => {
+    const input = document.getElementById('productSearch');
+    const rows = Array.from(document.querySelectorAll('.product-row'));
+    const groups = Array.from(document.querySelectorAll('.product-group'));
+    const counter = document.getElementById('productCounter');
+    if(!input || rows.length === 0 || !counter) return;
+
+    const update = () => {
+        const term = input.value.trim().toLowerCase();
+        let visibleRows = 0;
+
+        for(const row of rows) {
+            const haystack = (row.dataset.search || '').toLowerCase();
+            const show = term === '' || haystack.includes(term);
+            row.hidden = !show;
+            if(show) visibleRows++;
+        }
+
+        for(const group of groups) {
+            const groupRows = group.querySelectorAll('.product-row');
+            let hasVisible = false;
+            for(const row of groupRows) {
+                if(!row.hidden) {
+                    hasVisible = true;
+                    break;
+                }
+            }
+            group.hidden = !hasVisible;
+        }
+
+        counter.textContent = `${visibleRows} visible`;
+    };
+
+    input.addEventListener('input', update);
+})();
+</script>
 {% endblock %}

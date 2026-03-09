@@ -13,6 +13,7 @@ The WebUI has a settings page where you can manage blacklist rules for source IP
 The rules are persisted in:
 
 - `PYKMS_BLACKLIST_PATH` (default: `/home/py-kms/db/pykms_blacklist.txt`)
+- `PYKMS_BLACKLIST_STATS_PATH` (default: `/home/py-kms/db/pykms_blacklist_stats.json`) for blocked-attempt counters
 
 Supported rule formats:
 - single IP (`192.168.1.10`)
