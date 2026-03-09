@@ -57,6 +57,7 @@ th {
             <th>Application ID</th>
             <th><abbr title="Stock Keeping Unit">SKU</abbr> ID</th>
             <th>License Status</th>
+            <th>Source IP</th>
             <th>Last Seen</th>
             <th>KMS <abbr title="Enhanced Privacy ID">EPID</abbr></th>
             <th>Seen Count</th>
@@ -76,6 +77,7 @@ th {
             <td>{{ client.applicationId }}</td>
             <td>{{ client.skuId }}</td>
             <td>{{ client.licenseStatus }}</td>
+            <td>{{ client.sourceIp }}</td>
             <td class="convert_timestamp">{{ client.lastRequestTime }}</td>
             <td>
                 {% if client.kmsEpid | length > 16 %}

@@ -16,29 +16,35 @@ from pykms_Format import pretty_printer
 
 loggersrv = logging.getLogger('logsrv')
 
-def sql_initialize(dbName):
-        if not os.path.isfile(dbName):
-                # Initialize the database.
-                loggersrv.debug(f'Initializing database file "{dbName}"...')
-                con = None
-                try:
-                        con = sqlite3.connect(dbName)
-                        cur = con.cursor()
-                        cur.execute("CREATE TABLE clients(clientMachineId TEXT , machineName TEXT, applicationId TEXT, skuId TEXT, licenseStatus TEXT, lastRequestTime INTEGER, kmsEpid TEXT, requestCount INTEGER, PRIMARY KEY(clientMachineId, applicationId))")
+def _ensure_clients_schema(cur):
+        cur.execute("CREATE TABLE IF NOT EXISTS clients(clientMachineId TEXT, machineName TEXT, applicationId TEXT, skuId TEXT, licenseStatus TEXT, lastRequestTime INTEGER, kmsEpid TEXT, requestCount INTEGER, sourceIp TEXT, PRIMARY KEY(clientMachineId, applicationId))")
+        cur.execute("PRAGMA table_info(clients)")
+        columns = {row[1] for row in cur.fetchall()}
+        if 'sourceIp' not in columns:
+                cur.execute("ALTER TABLE clients ADD COLUMN sourceIp TEXT")
 
-                except sqlite3.Error as e:
-                        pretty_printer(log_obj = loggersrv.error, to_exit = True, put_text = "{reverse}{red}{bold}Sqlite Error: %s. Exiting...{end}" %str(e))
-                finally:
-                        if con:
-                                con.commit()
-                                con.close()
+def sql_initialize(dbName):
+        con = None
+        try:
+                if not os.path.isfile(dbName):
+                        loggersrv.debug(f'Initializing database file "{dbName}"...')
+                con = sqlite3.connect(dbName)
+                cur = con.cursor()
+                _ensure_clients_schema(cur)
+        except sqlite3.Error as e:
+                pretty_printer(log_obj = loggersrv.error, to_exit = True, put_text = "{reverse}{red}{bold}Sqlite Error: %s. Exiting...{end}" %str(e))
+        finally:
+                if con:
+                        con.commit()
+                        con.close()
 
 def sql_get_all(dbName):
         if not os.path.isfile(dbName):
                 return None
         with sqlite3.connect(dbName) as con:
                 cur = con.cursor()
-                cur.execute("SELECT * FROM clients")
+                _ensure_clients_schema(cur)
+                cur.execute("SELECT clientMachineId, machineName, applicationId, skuId, licenseStatus, lastRequestTime, kmsEpid, requestCount, sourceIp FROM clients")
                 clients = []
                 for row in cur.fetchall():
                         clients.append({
@@ -49,7 +55,8 @@ def sql_get_all(dbName):
                                 'licenseStatus': row[4],
                                 'lastRequestTime': datetime.datetime.fromtimestamp(row[5]).isoformat(),
                                 'kmsEpid': row[6],
-                                'requestCount': row[7]
+                                'requestCount': row[7],
+                                'sourceIp': row[8] or ''
                         })
                 return clients
 
@@ -58,13 +65,14 @@ def sql_update(dbName, infoDict):
         try:
                 con = sqlite3.connect(dbName)
                 cur = con.cursor()
+                _ensure_clients_schema(cur)
                 cur.execute("SELECT * FROM clients WHERE clientMachineId=:clientMachineId AND applicationId=:appId;", infoDict)
                 try:
                         data = cur.fetchone()
                         if not data:
                                 # Insert row.
                                 cur.execute("INSERT INTO clients (clientMachineId, machineName, applicationId, \
-skuId, licenseStatus, lastRequestTime, requestCount) VALUES (:clientMachineId, :machineName, :appId, :skuId, :licenseStatus, :requestTime, 1);", infoDict)
+skuId, licenseStatus, lastRequestTime, requestCount, sourceIp) VALUES (:clientMachineId, :machineName, :appId, :skuId, :licenseStatus, :requestTime, 1, :sourceIp);", infoDict)
                         else:
                                 # Update data.
                                 if data[1] != infoDict["machineName"]:
@@ -81,6 +89,9 @@ clientMachineId=:clientMachineId AND applicationId=:appId;", infoDict)
 clientMachineId=:clientMachineId AND applicationId=:appId;", infoDict)
                                 if data[5] != infoDict["requestTime"]:
                                         cur.execute("UPDATE clients SET lastRequestTime=:requestTime WHERE \
+clientMachineId=:clientMachineId AND applicationId=:appId;", infoDict)
+                                if (len(data) > 8 and data[8] != infoDict["sourceIp"]) or (len(data) <= 8 and infoDict["sourceIp"]):
+                                        cur.execute("UPDATE clients SET sourceIp=:sourceIp WHERE \
 clientMachineId=:clientMachineId AND applicationId=:appId;", infoDict)
                                 # Increment requestCount
                                 cur.execute("UPDATE clients SET requestCount=requestCount+1 WHERE \
@@ -103,6 +114,7 @@ def sql_update_epid(dbName, kmsRequest, response, appName):
         try:
                 con = sqlite3.connect(dbName)
                 cur = con.cursor()
+                _ensure_clients_schema(cur)
                 cur.execute("SELECT * FROM clients WHERE clientMachineId=? AND applicationId=?;", (cmid, appName))
                 try:
                         data = cur.fetchone()

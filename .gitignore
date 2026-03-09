@@ -132,3 +132,6 @@ charts/*/*.tgz
 /.idea/
 docker-compose-*.yml
 *.sh
+
+# VSCode
+*.code-workspace

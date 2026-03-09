@@ -482,7 +482,6 @@ def server_main_terminal():
 class kmsServerHandler(socketserver.BaseRequestHandler):
         def setup(self):
                 loggersrv.info("Connection accepted: %s:%d" %(self.client_address[0], self.client_address[1]))
-                srv_config['raddr'] = self.client_address
 
         def handle(self):
                 self.request.settimeout(srv_config['timeoutsndrcv'])
@@ -503,11 +502,15 @@ class kmsServerHandler(socketserver.BaseRequestHandler):
                         if packetType == rpcBase.packetType['bindReq']:
                                 loggersrv.info("RPC bind request received.")
                                 pretty_printer(num_text = [-2, 2], where = "srv")
-                                handler = pykms_RpcBind.handler(self.data, srv_config)
+                                request_config = srv_config.copy()
+                                request_config['raddr'] = self.client_address
+                                handler = pykms_RpcBind.handler(self.data, request_config)
                         elif packetType == rpcBase.packetType['request']:
                                 loggersrv.info("Received activation request.")
                                 pretty_printer(num_text = [-2, 13], where = "srv")
-                                handler = pykms_RpcRequest.handler(self.data, srv_config)
+                                request_config = srv_config.copy()
+                                request_config['raddr'] = self.client_address
+                                handler = pykms_RpcRequest.handler(self.data, request_config)
                         else:
                                 pretty_printer(log_obj = loggersrv.error,
                                                put_text = "{reverse}{red}{bold}Invalid RPC request type %s.{end}" %packetType)

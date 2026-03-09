@@ -197,7 +197,8 @@ could be detected as not genuine !{end}" %currentClientCount)
                         "skuId" : skuName,
                         "licenseStatus" : kmsRequest.getLicenseStatus(),
                         "requestTime" : int(time.time()),
-                        "kmsEpid" : None
+                        "kmsEpid" : None,
+                        "sourceIp" : str(self.srv_config.get('raddr', ('',))[0])
                 }
 
                 loggersrv.info("Machine Name: %s" % infoDict["machineName"])
@@ -205,6 +206,7 @@ could be detected as not genuine !{end}" %currentClientCount)
                 loggersrv.info("Application ID: %s" % infoDict["appId"])
                 loggersrv.info("SKU ID: %s" % infoDict["skuId"])
                 loggersrv.info("License Status: %s" % infoDict["licenseStatus"])
+                loggersrv.info("Source IP: %s" % infoDict["sourceIp"])
                 loggersrv.info("Request Time: %s" % local_dt.strftime('%Y-%m-%d %H:%M:%S %Z (UTC%z)'))
                 
                 if self.srv_config['loglevel'] == 'MININFO':
