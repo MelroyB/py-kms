@@ -23,7 +23,19 @@
                     <h1 class="brand-title">py-kms Web UI</h1>
                     <p class="brand-subtitle">Activation traffic, product catalog and runtime details in one view.</p>
                 </div>
-                <span class="status-pill">Server online</span>
+                <div class="auth-actions">
+                    <span class="status-pill">Server online</span>
+                    {% if webui_auth_enabled %}
+                    {% if session.get('pykms_webui_auth') %}
+                    <span class="status-pill">Signed in as {{ session.get('pykms_webui_user', webui_auth_user) }}</span>
+                    <form action="/logout" method="post" class="logout-form">
+                        <button type="submit" class="logout-button">Logout</button>
+                    </form>
+                    {% else %}
+                    <span class="status-pill">Authentication enabled</span>
+                    {% endif %}
+                    {% endif %}
+                </div>
             </div>
             <nav class="nav-pills">
                 <a href="/" class="nav-pill {% if path == '/' %}is-active{% endif %}">Clients</a>

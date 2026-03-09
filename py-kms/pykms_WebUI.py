@@ -1,5 +1,5 @@
-import os, uuid, datetime
-from flask import Flask, render_template
+import os, uuid, datetime, hmac
+from flask import Flask, render_template, request, redirect, url_for, session
 from pykms_Sql import sql_get_all
 from pykms_DB2Dict import kmsDB2Dict
 
@@ -50,6 +50,14 @@ app.jinja_env.globals['get_serve_count'] = _get_serve_count
 app.jinja_env.globals['random_uuid'] = _random_uuid
 app.jinja_env.globals['version_info'] = None
 
+_webui_auth_password = os.environ.get('PYKMS_WEBUI_PASSWORD', '')
+_webui_auth_username = os.environ.get('PYKMS_WEBUI_USERNAME', 'admin')
+_webui_auth_enabled = bool(_webui_auth_password)
+if _webui_auth_enabled:
+    app.secret_key = os.environ.get('PYKMS_WEBUI_SECRET_KEY') or uuid.uuid5(uuid.NAMESPACE_OID, _webui_auth_password).hex
+app.jinja_env.globals['webui_auth_enabled'] = _webui_auth_enabled
+app.jinja_env.globals['webui_auth_user'] = _webui_auth_username
+
 _version_info_path = os.environ.get('PYKMS_VERSION_PATH', '../VERSION')
 if os.path.exists(_version_info_path):
     with open(_version_info_path, 'r') as f:
@@ -62,6 +70,58 @@ _dbEnvVarName = 'PYKMS_SQLITE_DB_PATH'
 def _env_check():
     if _dbEnvVarName not in os.environ:
         raise Exception(f'Environment variable is not set: {_dbEnvVarName}')
+
+def _is_safe_next_url(path):
+    return isinstance(path, str) and path.startswith('/') and not path.startswith('//')
+
+@app.before_request
+def _protect_webui():
+    if not _webui_auth_enabled:
+        return None
+    public_endpoints = {'readyz', 'livez', 'login', 'logout', 'static'}
+    if request.endpoint is None:
+        return None
+    if request.endpoint in public_endpoints:
+        return None
+    if session.get('pykms_webui_auth') is True:
+        return None
+    return redirect(url_for('login', next = request.path))
+
+@app.route('/login', methods = ['GET', 'POST'])
+def login():
+    if not _webui_auth_enabled:
+        return redirect(url_for('root'))
+
+    error = None
+    next_url = request.values.get('next', '/')
+    if not _is_safe_next_url(next_url):
+        next_url = '/'
+    if session.get('pykms_webui_auth') is True:
+        return redirect(next_url)
+
+    if request.method == 'POST':
+        username = request.form.get('username', '')
+        password = request.form.get('password', '')
+        if hmac.compare_digest(username, _webui_auth_username) and hmac.compare_digest(password, _webui_auth_password):
+            session.clear()
+            session['pykms_webui_auth'] = True
+            session['pykms_webui_user'] = _webui_auth_username
+            return redirect(next_url)
+        error = 'Invalid username or password.'
+
+    return render_template(
+        'login.html',
+        path='/login/',
+        error=error,
+        next_url=next_url
+    )
+
+@app.route('/logout', methods = ['POST'])
+def logout():
+    session.clear()
+    if _webui_auth_enabled:
+        return redirect(url_for('login'))
+    return redirect(url_for('root'))
 
 @app.route('/')
 def root():

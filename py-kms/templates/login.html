@@ -1,0 +1,33 @@
+{% extends 'base.html' %}
+
+{% block title %}login{% endblock %}
+
+{% block content %}
+<div class="login-wrap">
+    <section class="login-card">
+        <div class="section-head">
+            <div>
+                <h2 class="page-title">Sign In</h2>
+                <p class="page-subtitle">This py-kms web interface is protected.</p>
+            </div>
+        </div>
+
+        {% if error %}
+        <div class="auth-error">{{ error }}</div>
+        {% endif %}
+
+        <form method="post" action="/login" class="login-form">
+            <input type="hidden" name="next" value="{{ next_url }}">
+            <div>
+                <label class="login-label" for="username">Username</label>
+                <input class="login-input" type="text" id="username" name="username" autocomplete="username" required>
+            </div>
+            <div>
+                <label class="login-label" for="password">Password</label>
+                <input class="login-input" type="password" id="password" name="password" autocomplete="current-password" required>
+            </div>
+            <button type="submit" class="login-button">Sign In</button>
+        </form>
+    </section>
+</div>
+{% endblock %}
