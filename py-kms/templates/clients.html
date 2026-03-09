@@ -60,14 +60,11 @@
     <table class="compact-table">
         <thead>
             <tr>
-                <th>Client ID</th>
                 <th>Machine</th>
-                <th>Application</th>
                 <th><abbr title="Stock Keeping Unit">SKU</abbr></th>
                 <th>License</th>
                 <th>Source IP</th>
                 <th>Last Seen</th>
-                <th>KMS <abbr title="Enhanced Privacy ID">EPID</abbr></th>
                 <th>Seen</th>
                 <th>Actions</th>
             </tr>
@@ -76,9 +73,11 @@
             {% for client in clients %}
             {% set status = client.licenseStatus | lower %}
             <tr class="client-row" data-search="{{ client.clientMachineId }} {{ client.machineName }} {{ client.applicationId }} {{ client.skuId }} {{ client.sourceIp }} {{ client.kmsEpid }}">
-                <td><pre class="text-mono">{{ client.clientMachineId }}</pre></td>
-                <td title="{{ client.machineName }}">{{ client.machineName }}</td>
-                <td><span class="badge-chip brand">{{ client.applicationId }}</span></td>
+                <td>
+                    <span class="row-tooltip" title="Machine: {{ client.machineName }}&#10;Application: {{ client.applicationId }}&#10;Client ID: {{ client.clientMachineId }}&#10;KMS EPID: {{ client.kmsEpid if client.kmsEpid else 'n/a' }}">
+                        {{ client.machineName }}
+                    </span>
+                </td>
                 <td title="{{ client.skuId }}">{{ client.skuId | truncate(38, True, '...') }}</td>
                 <td>
                     {% if 'licensed' in status %}
@@ -97,13 +96,6 @@
                     {% endif %}
                 </td>
                 <td class="convert_timestamp">{{ client.lastRequestTime }}</td>
-                <td title="{{ client.kmsEpid }}">
-                    {% if client.kmsEpid %}
-                    <pre class="text-mono">{{ client.kmsEpid }}</pre>
-                    {% else %}
-                    <span class="muted">n/a</span>
-                    {% endif %}
-                </td>
                 <td>{{ client.requestCount }}</td>
                 <td>
                     <div class="row-actions">

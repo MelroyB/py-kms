@@ -604,6 +604,11 @@ textarea.login-input {
     flex-wrap: wrap;
 }
 
+.row-tooltip {
+    cursor: help;
+    border-bottom: 1px dotted #8fb3de;
+}
+
 .row-action-form {
     margin: 0;
 }
