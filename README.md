@@ -3,7 +3,6 @@
 ![open-issues](https://img.shields.io/github/issues/Py-KMS-Organization/py-kms)
 ![last-commit](https://img.shields.io/github/last-commit/Py-KMS-Organization/py-kms/master)
 ![docker-pulls](https://img.shields.io/docker/pulls/pykmsorg/py-kms)
-![read-the-docs](https://img.shields.io/readthedocs/py-kms)
 
 _This project is intended for testing and learning, not for production use._
 
@@ -58,7 +57,7 @@ For Docker-specific details (env vars, volume behavior), see:
 - `IP` (default `::`)
 - `PORT` (default `1688`)
 - `LOGLEVEL` (default `INFO`)
-- `WEBUI` (`1` in full image, `0` in minimal image)
+- `WEBUI` (default `1`)
 
 ### WebUI Authentication
 - `PYKMS_WEBUI_PASSWORD` (required to enable login)
@@ -88,9 +87,6 @@ For Docker-specific details (env vars, volume behavior), see:
 - Blacklist entries can be managed in the WebUI settings page.
 - GeoIP lookup uses an external provider by default (`ipapi.co`). Public source IPs may be sent to that provider.
 
-## Documentation
-Full documentation is available on Read the Docs:
-- https://py-kms.readthedocs.io/en/latest/
 
 ## License
 - `py-kms` is released under [The Unlicense](./LICENSE)
