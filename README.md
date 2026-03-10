@@ -105,6 +105,7 @@ Docker-specific details are in:
 - For persistence, mount `/home/py-kms/db` as a volume.
 - If `LOGFILE=STDOUT`, source-IP startup backfill has no log files to parse.
 - GeoIP lookup uses an external provider by default (`ipapi.co`), so public source IPs may be sent to that service.
+- On container startup, missing required runtime files are auto-created (touch), including db/blacklist/stats files and custom logfile paths.
 
 ## License
 `py-kms` is released under [The Unlicense](./LICENSE).

@@ -15,6 +15,7 @@
 - Refreshed WebUI layout and table usability (including products search and improved client details via tooltip).
 - Added `docker/.env.example` with documented runtime defaults (including `CLIENT_COUNT`).
 - Added root `docker-compose.yml` for quick local deployment.
+- Added Docker runtime preflight to auto-create missing required files (touch), including db, blacklist, blacklist stats, and custom logfile paths.
 - Simplified CI and image publishing by removing minimal image build pipeline and related Docker files.
 - Simplified CI and image publishing by removing next-tag workflow and related next publishing path.
 - Simplified CI and image publishing by aligning primary publishing to full image tags (`python3` and `latest`).

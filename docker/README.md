@@ -4,6 +4,10 @@ Container image links:
 - GitHub Container Registry image tag: `ghcr.io/melroyb/py-kms:latest`
 - Docker Hub image tag: `melroy/py-kms:latest`
 
+## Runtime file preflight
+On startup, the container checks and creates missing runtime files (touch) before launching py-kms.
+This includes sqlite/log/blacklist-related files that are required for a successful start.
+
 ## WebUI Authentication
 If you run with `WEBUI=1`, you can protect the web interface with environment variables:
 

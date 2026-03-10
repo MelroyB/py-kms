@@ -23,6 +23,7 @@ argumentVariableMapping = {
 
 db_path = os.path.join(os.sep, 'home', 'py-kms', 'db', 'pykms_database.db')
 blacklist_path = os.environ.get('PYKMS_BLACKLIST_PATH', os.path.join(os.sep, 'home', 'py-kms', 'db', 'pykms_blacklist.txt'))
+blacklist_stats_path = os.environ.get('PYKMS_BLACKLIST_STATS_PATH', os.path.join(os.sep, 'home', 'py-kms', 'db', 'pykms_blacklist_stats.json'))
 log_file = os.environ.get('LOGFILE', 'STDOUT')
 listen_ip = os.environ.get('IP', '::').split()
 listen_port = os.environ.get('PORT', '1688')
@@ -31,6 +32,47 @@ want_webui = os.environ.get('WEBUI', '0') == '1' # if the variable is not provid
 def _env_bool(env_name, default='1'):
   value = os.environ.get(env_name, default).strip().lower()
   return value in ['1', 'true', 'yes', 'y', 'on']
+
+def _ensure_parent(path):
+  parent = os.path.dirname(path)
+  if parent:
+    os.makedirs(parent, exist_ok = True)
+
+def _touch(path):
+  _ensure_parent(path)
+  with open(path, 'a'):
+    os.utime(path, None)
+
+def _is_real_log_path(value):
+  if not value:
+    return False
+  # Keep compatibility with py-kms logging modes that are not filesystem paths.
+  return value.upper() not in ['STDOUT', 'STDOUTOFF', 'FILESTDOUT', 'FILEOFF']
+
+def ensure_runtime_files(logger):
+  required_files = []
+
+  # WebUI mode requires sqlite storage file for startup path and data persistence.
+  if want_webui:
+    required_files.append(db_path)
+
+  # Blacklist files are used by WebUI settings and runtime blacklist stats.
+  required_files.append(blacklist_path)
+  required_files.append(blacklist_stats_path)
+
+  if _is_real_log_path(log_file):
+    required_files.append(log_file)
+
+  for file_path in required_files:
+    try:
+      if not os.path.exists(file_path):
+        _touch(file_path)
+        logger.info("Created missing runtime file: %s", file_path)
+      else:
+        _ensure_parent(file_path)
+    except Exception as e:
+      logger.error("Failed to prepare runtime file %s: %s", file_path, e)
+      raise
 
 def run_source_ip_backfill(logger):
   if not want_webui:
@@ -71,9 +113,7 @@ def run_source_ip_backfill(logger):
       logger.warning("Backfill stderr:\n%s", completed.stderr.strip())
 
 def start_kms(logger):
-  # Make sure the full path to the db exists
-  if want_webui and not os.path.exists(os.path.dirname(db_path)):
-    os.makedirs(os.path.dirname(db_path), exist_ok=True)
+  ensure_runtime_files(logger)
   run_source_ip_backfill(logger)
 
   # Build the command to execute
