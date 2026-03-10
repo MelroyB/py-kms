@@ -191,16 +191,17 @@ def _protect_webui():
     if request.endpoint is None:
         return None
 
-    csrf_protected_endpoints = {'login', 'logout', 'settings', 'clients_action'}
-    if request.method == 'POST' and request.endpoint in csrf_protected_endpoints:
-        if not _validate_csrf_token():
-            return 'Invalid CSRF token.', 400
-
     if not _webui_auth_enabled:
         return None
+
     if request.endpoint in public_endpoints:
+        # Do not enforce CSRF on login; this avoids lockouts when session cookies rotate.
         return None
     if session.get('pykms_webui_auth') is True:
+        csrf_protected_endpoints = {'logout', 'settings', 'clients_action'}
+        if request.method == 'POST' and request.endpoint in csrf_protected_endpoints:
+            if not _validate_csrf_token():
+                return 'Invalid CSRF token.', 400
         return None
     return redirect(url_for('login', next = request.path))
 
