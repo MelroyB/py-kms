@@ -21,6 +21,7 @@ It supports KMS protocol v4/v5/v6, includes a Docker-first runtime, and has a mo
   - settings page
   - built-in login protection
 - Source IP tracking in the clients table
+- Country lookup (flag + name) next to Source IP in clients table
 - Startup source-IP backfill from server logs
 - Persistent blacklist management (single IP, CIDR, range)
 - Blacklist attempt counters (per rule + per source IP)
@@ -75,10 +76,17 @@ For Docker-specific details (env vars, volume behavior), see:
 - `PYKMS_SOURCEIP_BACKFILL_GLOB` (default `/home/py-kms/db/pykms_logserver.log*`)
 - `PYKMS_SOURCEIP_BACKFILL_LOGS` (optional explicit comma-separated list; overrides glob)
 
+### GeoIP (Country in Clients WebUI)
+- `PYKMS_GEOIP_ENABLED` (default `1`)
+- `PYKMS_GEOIP_PROVIDER` (default `ipapi.co`)
+- `PYKMS_GEOIP_TIMEOUT_SECONDS` (default `2`)
+- `PYKMS_GEOIP_CACHE_TTL_SECONDS` (default `604800`, 7 days)
+
 ## Notes
 - If you use only `LOGFILE=STDOUT`, startup source-IP backfill has no log files to parse.
 - For persistent sqlite/blacklist data, mount `/home/py-kms/db` as a Docker volume.
 - Blacklist entries can be managed in the WebUI settings page.
+- GeoIP lookup uses an external provider by default (`ipapi.co`). Public source IPs may be sent to that provider.
 
 ## Documentation
 Full documentation is available on Read the Docs:

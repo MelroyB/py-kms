@@ -31,3 +31,16 @@ Environment variables:
 Important:
 - Backfill only works from log files that are present in the mounted volume.
 - If you only log to `STDOUT`, there is no log file for backfill.
+
+## GeoIP country lookup in Clients page
+The clients table can show a country flag + name next to each source IP.
+Lookup uses an external provider without API key by default (`ipapi.co`), and results are cached in sqlite.
+
+Environment variables:
+- `PYKMS_GEOIP_ENABLED` (default: `1`)
+- `PYKMS_GEOIP_PROVIDER` (default: `ipapi.co`)
+- `PYKMS_GEOIP_TIMEOUT_SECONDS` (default: `2`)
+- `PYKMS_GEOIP_CACHE_TTL_SECONDS` (default: `604800`, 7 days)
+
+Privacy note:
+- For public IP addresses, the source IP may be sent to the configured GeoIP provider.

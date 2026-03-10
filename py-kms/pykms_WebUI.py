@@ -1,8 +1,9 @@
 import os, uuid, datetime, hmac, threading
 from flask import Flask, render_template, request, redirect, url_for, session
-from pykms_Sql import sql_get_all, sql_delete
+from pykms_Sql import sql_get_all, sql_delete, sql_geoip_get_cached, sql_geoip_upsert
 from pykms_DB2Dict import kmsDB2Dict
 from pykms_Blacklist import get_blacklist_path, parse_blacklist_text, normalize_ip_text, is_ip_blocked, load_blacklist_stats
+from pykms_GeoIP import lookup_country, country_display, UNKNOWN_COUNTRY
 
 def _random_uuid():
     return str(uuid.uuid4()).replace('-', '_')
@@ -86,6 +87,11 @@ if os.path.exists(_version_info_path):
         }
 
 _dbEnvVarName = 'PYKMS_SQLITE_DB_PATH'
+_geoip_enabled = os.environ.get('PYKMS_GEOIP_ENABLED', '1').strip().lower() in ('1', 'true', 'yes', 'on')
+_geoip_provider = os.environ.get('PYKMS_GEOIP_PROVIDER', 'ipapi.co').strip().lower()
+_geoip_timeout_seconds = max(1, int(os.environ.get('PYKMS_GEOIP_TIMEOUT_SECONDS', '2')))
+_geoip_cache_ttl_seconds = max(60, int(os.environ.get('PYKMS_GEOIP_CACHE_TTL_SECONDS', '604800')))
+
 def _env_check():
     if _dbEnvVarName not in os.environ:
         raise Exception(f'Environment variable is not set: {_dbEnvVarName}')
@@ -96,6 +102,35 @@ def _is_safe_next_url(path):
 def _set_ui_message(level, message):
     session['ui_message_level'] = level
     session['ui_message'] = message
+
+def _resolve_country_for_ip(db_path, ip_value, now_ts):
+    if not _geoip_enabled:
+        return dict(UNKNOWN_COUNTRY)
+
+    normalized_ip = normalize_ip_text(ip_value)
+    if not normalized_ip:
+        return dict(UNKNOWN_COUNTRY)
+
+    cached = sql_geoip_get_cached(db_path, normalized_ip)
+    if cached and (now_ts - int(cached.get('updatedAt') or 0) < _geoip_cache_ttl_seconds):
+        return {
+            'countryCode': cached.get('countryCode', ''),
+            'countryName': cached.get('countryName', 'Onbekend') or 'Onbekend'
+        }
+
+    resolved = lookup_country(
+        normalized_ip,
+        provider = _geoip_provider,
+        timeout_seconds = _geoip_timeout_seconds
+    )
+    sql_geoip_upsert(
+        db_path,
+        normalized_ip,
+        resolved.get('countryCode', ''),
+        resolved.get('countryName', 'Onbekend'),
+        now_ts
+    )
+    return resolved
 
 def _get_client_ip():
     return normalize_ip_text(request.headers.get('X-Forwarded-For', request.remote_addr or '').split(',')[0].strip())
@@ -354,6 +389,17 @@ def root():
     try:
         if dbPath:
             clients = sql_get_all(dbPath)
+            now_ts = int(datetime.datetime.utcnow().timestamp())
+            country_by_ip = {}
+            if clients:
+                for client in clients:
+                    source_ip = client.get('sourceIp', '')
+                    if source_ip not in country_by_ip:
+                        country_by_ip[source_ip] = _resolve_country_for_ip(dbPath, source_ip, now_ts)
+                    country_data = country_by_ip[source_ip]
+                    client['countryCode'] = country_data.get('countryCode', '')
+                    client['countryName'] = country_data.get('countryName', 'Onbekend')
+                    client['countryDisplay'] = country_display(client['countryCode'], client['countryName'])
     except Exception as e:
         error = f'Error while loading database: {e}'
     countClients = len(clients) if clients else 0

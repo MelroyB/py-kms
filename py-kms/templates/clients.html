@@ -64,6 +64,7 @@
                 <th><abbr title="Stock Keeping Unit">SKU</abbr></th>
                 <th>License</th>
                 <th>Source IP</th>
+                <th>Country</th>
                 <th>Last Seen</th>
                 <th>Seen</th>
                 <th>Actions</th>
@@ -72,7 +73,7 @@
         <tbody>
             {% for client in clients %}
             {% set status = client.licenseStatus | lower %}
-            <tr class="client-row" data-search="{{ client.clientMachineId }} {{ client.machineName }} {{ client.applicationId }} {{ client.skuId }} {{ client.sourceIp }} {{ client.kmsEpid }}">
+            <tr class="client-row" data-search="{{ client.clientMachineId }} {{ client.machineName }} {{ client.applicationId }} {{ client.skuId }} {{ client.sourceIp }} {{ client.kmsEpid }} {{ client.countryCode }} {{ client.countryName }}">
                 <td>
                     <span class="row-tooltip" title="Machine: {{ client.machineName }}&#10;Application: {{ client.applicationId }}&#10;Client ID: {{ client.clientMachineId }}&#10;KMS EPID: {{ client.kmsEpid if client.kmsEpid else 'n/a' }}">
                         {{ client.machineName }}
@@ -94,6 +95,9 @@
                     {% else %}
                     <span class="badge-chip danger">unknown</span>
                     {% endif %}
+                </td>
+                <td>
+                    <span class="badge-chip slate">{{ client.countryDisplay if client.countryDisplay else '🏳️ Onbekend' }}</span>
                 </td>
                 <td class="convert_timestamp">{{ client.lastRequestTime }}</td>
                 <td>{{ client.requestCount }}</td>

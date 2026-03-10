@@ -23,6 +23,7 @@ def _ensure_clients_schema(cur):
         columns = {row[1] for row in cur.fetchall()}
         if 'sourceIp' not in columns:
                 cur.execute("ALTER TABLE clients ADD COLUMN sourceIp TEXT")
+        cur.execute("CREATE TABLE IF NOT EXISTS geoip_cache(ip TEXT PRIMARY KEY, countryCode TEXT, countryName TEXT, updatedAt INTEGER)")
 
 def sql_initialize(dbName):
         con = None
@@ -145,6 +146,42 @@ clientMachineId=? AND applicationId=?;", (str(response["kmsEpid"].decode('utf-16
         except sqlite3.Error as e:
                 pretty_printer(log_obj = loggersrv.error, to_exit = True,
                                put_text = "{reverse}{red}{bold}Sqlite Error: %s. Exiting...{end}" %str(e))
+        finally:
+                if con:
+                        con.commit()
+                        con.close()
+
+def sql_geoip_get_cached(dbName, ip):
+        if (not dbName) or (not os.path.isfile(dbName)) or (not ip):
+                return None
+        with sqlite3.connect(dbName) as con:
+                cur = con.cursor()
+                _ensure_clients_schema(cur)
+                cur.execute("SELECT countryCode, countryName, updatedAt FROM geoip_cache WHERE ip=?;", (ip,))
+                row = cur.fetchone()
+                if not row:
+                        return None
+                return {
+                        'countryCode': row[0] or '',
+                        'countryName': row[1] or '',
+                        'updatedAt': int(row[2] or 0)
+                }
+
+def sql_geoip_upsert(dbName, ip, countryCode, countryName, updatedAt):
+        if (not dbName) or (not ip):
+                return
+        con = None
+        try:
+                con = sqlite3.connect(dbName)
+                cur = con.cursor()
+                _ensure_clients_schema(cur)
+                cur.execute(
+                        "INSERT INTO geoip_cache(ip, countryCode, countryName, updatedAt) VALUES(?, ?, ?, ?) "
+                        "ON CONFLICT(ip) DO UPDATE SET countryCode=excluded.countryCode, countryName=excluded.countryName, updatedAt=excluded.updatedAt;",
+                        (ip, countryCode, countryName, int(updatedAt))
+                )
+        except sqlite3.Error as e:
+                loggersrv.warning("GeoIP cache write failed for %s: %s", ip, e)
         finally:
                 if con:
                         con.commit()
