@@ -118,7 +118,7 @@ def _resolve_country_for_ip(db_path, ip_value, now_ts):
     if cached and (now_ts - int(cached.get('updatedAt') or 0) < _geoip_cache_ttl_seconds):
         return {
             'countryCode': cached.get('countryCode', ''),
-            'countryName': cached.get('countryName', 'Onbekend') or 'Onbekend'
+            'countryName': cached.get('countryName', 'Unknown') or 'Unknown'
         }
 
     resolved = lookup_country(
@@ -130,7 +130,7 @@ def _resolve_country_for_ip(db_path, ip_value, now_ts):
         db_path,
         normalized_ip,
         resolved.get('countryCode', ''),
-        resolved.get('countryName', 'Onbekend'),
+        resolved.get('countryName', 'Unknown'),
         now_ts
     )
     return resolved
@@ -401,7 +401,7 @@ def root():
                         country_by_ip[source_ip] = _resolve_country_for_ip(dbPath, source_ip, now_ts)
                     country_data = country_by_ip[source_ip]
                     client['countryCode'] = country_data.get('countryCode', '')
-                    client['countryName'] = country_data.get('countryName', 'Onbekend')
+                    client['countryName'] = country_data.get('countryName', 'Unknown')
                     client['countryDisplay'] = country_display(client['countryCode'], client['countryName'])
     except Exception as e:
         error = f'Error while loading database: {e}'

@@ -9,7 +9,7 @@ from pykms_Blacklist import normalize_ip_text
 
 UNKNOWN_COUNTRY = {
     'countryCode': '',
-    'countryName': 'Onbekend'
+    'countryName': 'Unknown'
 }
 
 def _country_code_to_flag(country_code):
@@ -19,7 +19,7 @@ def _country_code_to_flag(country_code):
     return chr(base + ord(country_code[0].upper())) + chr(base + ord(country_code[1].upper()))
 
 def country_display(country_code, country_name):
-    normalized_name = (country_name or '').strip() or 'Onbekend'
+    normalized_name = (country_name or '').strip() or 'Unknown'
     return f"{_country_code_to_flag(country_code)} {normalized_name}"
 
 def _is_lookup_candidate(ip_text):
@@ -55,5 +55,5 @@ def lookup_country(ip_text, provider = 'ipapi.co', timeout_seconds = 2):
         return dict(UNKNOWN_COUNTRY)
     return {
         'countryCode': country_code,
-        'countryName': country_name or 'Onbekend'
+        'countryName': country_name or 'Unknown'
     }
