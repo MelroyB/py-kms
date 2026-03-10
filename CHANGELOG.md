@@ -1,5 +1,27 @@
 # Changelog
 
+## py-kms_2026-03-10
+- Added source IP tracking in the WebUI clients overview, including sqlite schema migration support.
+- Added startup source IP backfill from log files for older sqlite entries.
+- Added persistent source IP blacklist management in WebUI settings (single IP, CIDR, explicit ranges).
+- Added blocked-attempt counters for blacklist matches (per rule and per source IP).
+- Added WebUI row actions for deleting client entries and blocking source IPs directly.
+- Added normalization for IPv4-mapped IPv6 display (for example `::ffff:1.2.3.4` -> `1.2.3.4`).
+- Added country display (flag + country name) next to source IP in clients overview.
+- Added GeoIP lookup and sqlite cache with TTL (`ipapi.co`, no API key by default).
+- Added WebUI authentication support via environment variables.
+- Hardened WebUI security with CSRF protection (state-changing routes), secure cookie settings, and login rate limiting.
+- Fixed login flow to prevent CSRF token lockout on `/login`.
+- Refreshed WebUI layout and table usability (including products search and improved client details via tooltip).
+- Added `docker/.env.example` with documented runtime defaults (including `CLIENT_COUNT`).
+- Added root `docker-compose.yml` for quick local deployment.
+- Simplified CI and image publishing by removing minimal image build pipeline and related Docker files.
+- Simplified CI and image publishing by removing next-tag workflow and related next publishing path.
+- Simplified CI and image publishing by aligning primary publishing to full image tags (`python3` and `latest`).
+- Cleaned repository documentation footprint by removing legacy `docs/` tree.
+- Cleaned repository documentation footprint by removing `.readthedocs.yaml`.
+- Cleaned repository documentation footprint by updating README files and image references for current registries and tags.
+
 ## py-kms_2022-12-16
 - Added support for new web-gui into Docker
 - Implemented whole-new web-based GUI with Flask
