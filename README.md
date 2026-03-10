@@ -64,6 +64,50 @@ You can also start from the provided env example:
 Docker-specific details are in:
 - [docker/README.md](./docker/README.md)
 
+## Windows and Office Client Setup (Volume Licensing)
+Use this only for environments with valid Microsoft Volume Licensing.
+
+Replace `<KMS_HOST>` with your server address (for example `kms.example.local` or `192.168.1.10`).
+
+### Windows
+Open an elevated Command Prompt and run:
+
+```cmd
+slmgr /skms <KMS_HOST>:1688
+slmgr /ato
+slmgr /dlv
+```
+
+Notes:
+- `slmgr /skms` sets the KMS host and port.
+- `slmgr /ato` triggers activation.
+- `slmgr /dlv` shows detailed activation status and current KMS host.
+
+### Microsoft Office (Office16/Office19/Office LTSC)
+Open an elevated Command Prompt and run:
+
+```cmd
+cd "%ProgramFiles%\Microsoft Office\Office16"
+if not exist ospp.vbs cd "%ProgramFiles(x86)%\Microsoft Office\Office16"
+
+cscript ospp.vbs /sethst:<KMS_HOST>
+cscript ospp.vbs /setprt:1688
+cscript ospp.vbs /act
+cscript ospp.vbs /dstatus
+```
+
+Notes:
+- `ospp.vbs /sethst` sets the KMS host.
+- `ospp.vbs /setprt` sets the KMS port.
+- `ospp.vbs /act` triggers activation.
+- `ospp.vbs /dstatus` shows Office activation status.
+
+If activation fails, check:
+- client can reach `<KMS_HOST>:1688`
+- system time is correct
+- edition/channel is compatible with KMS
+- firewall allows outbound TCP 1688
+
 ## Important Environment Variables
 
 ### Core
