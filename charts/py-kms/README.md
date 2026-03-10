@@ -27,8 +27,8 @@ Below is a basic overview of the steps required to deploy the Helm chart to an e
 | autoscaling.targetCPUUtilizationPercentage | int | `80` |  |
 | fullnameOverride | string | `""` |  |
 | image.pullPolicy | string | `"IfNotPresent"` |  |
-| image.repository | string | `"ghcr.io/py-kms-organization/py-kms"` |  |
-| image.tag | string | `"python3"` |  |
+| image.repository | string | `"ghcr.io/melroyb/py-kms"` |  |
+| image.tag | string | `"latest"` |  |
 | imagePullSecrets | list | `[]` |  |
 | ingress.annotations | object | `{}` |  |
 | ingress.className | string | `""` |  |

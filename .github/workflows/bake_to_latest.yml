@@ -7,7 +7,20 @@ on:
       - master
 
 jobs:
+  quality-check:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.x"
+      - name: Python syntax check
+        run: python3 -m py_compile py-kms/*.py docker/*.py
+
   bake-latest:
+    needs: quality-check
     runs-on: ubuntu-latest
     permissions:
       packages: write
