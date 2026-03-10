@@ -14,6 +14,7 @@ Main capabilities:
 - KMS protocol support: `v4`, `v5`, `v6`
 - SQLite persistence for client activations
 - WebUI pages for clients, products, settings and license
+- WebUI pagination and sorting for client overview
 - Source IP tracking and startup backfill from log files
 - Source IP blacklist (single IP, CIDR, range)
 - Blocked-attempt counters per rule and source IP
@@ -85,6 +86,7 @@ Docker-specific details are in:
 - `PYKMS_WEBUI_LOGIN_RATE_LIMIT_ATTEMPTS` (default `5`)
 - `PYKMS_WEBUI_LOGIN_RATE_LIMIT_WINDOW_SECONDS` (default `300`)
 - `PYKMS_WEBUI_LOGIN_RATE_LIMIT_BLOCK_SECONDS` (default `900`)
+- WebUI shows a visible warning when a default password value is used.
 
 ### Blacklist
 - `PYKMS_BLACKLIST_PATH` (default `/home/py-kms/db/pykms_blacklist.txt`)
@@ -100,6 +102,12 @@ Docker-specific details are in:
 - `PYKMS_GEOIP_PROVIDER` (default `ipapi.co`)
 - `PYKMS_GEOIP_TIMEOUT_SECONDS` (default `2`)
 - `PYKMS_GEOIP_CACHE_TTL_SECONDS` (default `604800`)
+- `PYKMS_GEOIP_ERROR_CACHE_TTL_SECONDS` (default `900`)
+- `PYKMS_GEOIP_MAX_LOOKUPS_PER_REQUEST` (default `20`)
+
+### Clients WebUI Pagination
+- `PYKMS_WEBUI_CLIENTS_PER_PAGE` (default `100`)
+- `PYKMS_WEBUI_CLIENTS_MAX_PER_PAGE` (default `500`)
 
 ## Notes
 - For persistence, mount `/home/py-kms/db` as a volume.

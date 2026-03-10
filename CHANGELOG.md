@@ -16,6 +16,12 @@
 - Added `docker/.env.example` with documented runtime defaults (including `CLIENT_COUNT`).
 - Added root `docker-compose.yml` for quick local deployment.
 - Added Docker runtime preflight to auto-create missing required files (touch), including db, blacklist, blacklist stats, and custom logfile paths.
+- Added WebUI warning banner when a default password value is configured.
+- Fixed WebUI CSRF enforcement for logout while keeping login lockout-safe behavior.
+- Added server-side pagination and sorting controls for the clients overview.
+- Improved GeoIP performance controls with per-request lookup limits and dedicated error-cache TTL.
+- Updated Helm chart defaults to the current repository (`ghcr.io/melroyb/py-kms:latest`).
+- Added a quality-check job in CI before release image publishing.
 - Simplified CI and image publishing by removing minimal image build pipeline and related Docker files.
 - Simplified CI and image publishing by removing next-tag workflow and related next publishing path.
 - Simplified CI and image publishing by aligning primary publishing to full image tags (`python3` and `latest`).

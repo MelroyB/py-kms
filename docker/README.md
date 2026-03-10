@@ -15,6 +15,8 @@ If you run with `WEBUI=1`, you can protect the web interface with environment va
 - `PYKMS_WEBUI_USERNAME` (optional, defaults to `admin`)
 - `PYKMS_WEBUI_SECRET_KEY` (optional but recommended for stable Flask sessions)
 
+If a default password is detected, the WebUI shows a security warning banner.
+
 ## IP Blacklist (persistent)
 The WebUI has a settings page where you can manage blacklist rules for source IPs and ranges.
 The rules are persisted in:
@@ -48,6 +50,15 @@ Environment variables:
 - `PYKMS_GEOIP_PROVIDER` (default: `ipapi.co`)
 - `PYKMS_GEOIP_TIMEOUT_SECONDS` (default: `2`)
 - `PYKMS_GEOIP_CACHE_TTL_SECONDS` (default: `604800`, 7 days)
+- `PYKMS_GEOIP_ERROR_CACHE_TTL_SECONDS` (default: `900`)
+- `PYKMS_GEOIP_MAX_LOOKUPS_PER_REQUEST` (default: `20`)
+
+## Clients table pagination and sorting
+The clients page supports server-side pagination and sorting.
+
+Environment variables:
+- `PYKMS_WEBUI_CLIENTS_PER_PAGE` (default: `100`)
+- `PYKMS_WEBUI_CLIENTS_MAX_PER_PAGE` (default: `500`)
 
 Privacy note:
 - For public IP addresses, the source IP may be sent to the configured GeoIP provider.
