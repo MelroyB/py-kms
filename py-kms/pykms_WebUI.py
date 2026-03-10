@@ -57,6 +57,8 @@ _webui_auth_username = os.environ.get('PYKMS_WEBUI_USERNAME', 'admin')
 _webui_auth_enabled = bool(_webui_auth_password)
 if _webui_auth_enabled:
     app.secret_key = os.environ.get('PYKMS_WEBUI_SECRET_KEY') or uuid.uuid5(uuid.NAMESPACE_OID, _webui_auth_password).hex
+_webui_default_password_values = {'change-me', 'changeme', 'admin', 'password', 'py-kms'}
+_webui_uses_default_password = _webui_auth_password.strip().lower() in _webui_default_password_values
 
 _cookie_secure_env = os.environ.get('PYKMS_WEBUI_COOKIE_SECURE', 'false').strip().lower()
 app.config.update(
@@ -76,6 +78,7 @@ _login_attempt_state_lock = threading.Lock()
 
 app.jinja_env.globals['webui_auth_enabled'] = _webui_auth_enabled
 app.jinja_env.globals['webui_auth_user'] = _webui_auth_username
+app.jinja_env.globals['webui_uses_default_password'] = _webui_uses_default_password
 app.jinja_env.globals['blacklist_path'] = get_blacklist_path()
 
 _version_info_path = os.environ.get('PYKMS_VERSION_PATH', '../VERSION')
@@ -187,7 +190,7 @@ def _inject_csrf_token():
 
 @app.before_request
 def _protect_webui():
-    public_endpoints = {'readyz', 'livez', 'login', 'logout', 'static'}
+    public_endpoints = {'readyz', 'livez', 'login', 'static'}
     if request.endpoint is None:
         return None
 
@@ -195,7 +198,6 @@ def _protect_webui():
         return None
 
     if request.endpoint in public_endpoints:
-        # Do not enforce CSRF on login; this avoids lockouts when session cookies rotate.
         return None
     if session.get('pykms_webui_auth') is True:
         csrf_protected_endpoints = {'logout', 'settings', 'clients_action'}

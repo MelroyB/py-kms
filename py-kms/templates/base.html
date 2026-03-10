@@ -47,6 +47,11 @@
         </header>
 
         <main class="content-surface">
+            {% if webui_auth_enabled and webui_uses_default_password %}
+            <div class="panel-card is-danger" style="margin-bottom:0.9rem;">
+                <p class="small-note text-danger">Security warning: default WebUI password detected. Set a strong value in <code>PYKMS_WEBUI_PASSWORD</code>.</p>
+            </div>
+            {% endif %}
             {% block content %}{% endblock %}
         </main>
 
