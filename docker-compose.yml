@@ -1,0 +1,12 @@
+services:
+  py-kms:
+    image: melroy/py-kms:latest
+    container_name: py-kms
+    restart: unless-stopped
+    env_file:
+      - ./docker/.env.example
+    ports:
+      - "1688:1688"
+      - "8080:8080"
+    volumes:
+      - ./data:/home/py-kms/db

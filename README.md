@@ -27,6 +27,10 @@ Only one image variant is maintained.
 - `ghcr.io/melroyb/py-kms:python3`
 - `ghcr.io/melroyb/py-kms:latest`
 
+Container registries:
+- GitHub Container Registry image tag: `ghcr.io/melroyb/py-kms:latest`
+- Docker Hub image tag: `melroy/py-kms:latest`
+
 `latest` and `python3` are built from the same Dockerfile and point to the same build output.
 
 ## Quick Start
@@ -50,7 +54,7 @@ docker run -d \
   -p 1688:1688 \
   -p 8080:8080 \
   -v pykms-db:/home/py-kms/db \
-  ghcr.io/melroyb/py-kms:latest
+  melroy/py-kms:latest
 ```
 
 You can also start from the provided env example:

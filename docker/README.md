@@ -1,5 +1,9 @@
 The Docker build must access the source code of this repository. Therefore the build context must be the root of the project directory.
 
+Container image links:
+- GitHub Container Registry image tag: `ghcr.io/melroyb/py-kms:latest`
+- Docker Hub image tag: `melroy/py-kms:latest`
+
 ## WebUI Authentication
 If you run with `WEBUI=1`, you can protect the web interface with environment variables:
 
