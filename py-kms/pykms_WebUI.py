@@ -94,6 +94,10 @@ _geoip_enabled = os.environ.get('PYKMS_GEOIP_ENABLED', '1').strip().lower() in (
 _geoip_provider = os.environ.get('PYKMS_GEOIP_PROVIDER', 'ipapi.co').strip().lower()
 _geoip_timeout_seconds = max(1, int(os.environ.get('PYKMS_GEOIP_TIMEOUT_SECONDS', '2')))
 _geoip_cache_ttl_seconds = max(60, int(os.environ.get('PYKMS_GEOIP_CACHE_TTL_SECONDS', '604800')))
+_geoip_error_cache_ttl_seconds = max(30, int(os.environ.get('PYKMS_GEOIP_ERROR_CACHE_TTL_SECONDS', '900')))
+_geoip_max_lookups_per_request = max(1, int(os.environ.get('PYKMS_GEOIP_MAX_LOOKUPS_PER_REQUEST', '20')))
+_clients_default_per_page = max(10, int(os.environ.get('PYKMS_WEBUI_CLIENTS_PER_PAGE', '100')))
+_clients_max_per_page = max(_clients_default_per_page, int(os.environ.get('PYKMS_WEBUI_CLIENTS_MAX_PER_PAGE', '500')))
 
 def _env_check():
     if _dbEnvVarName not in os.environ:
@@ -106,7 +110,7 @@ def _set_ui_message(level, message):
     session['ui_message_level'] = level
     session['ui_message'] = message
 
-def _resolve_country_for_ip(db_path, ip_value, now_ts):
+def _resolve_country_for_ip(db_path, ip_value, now_ts, lookup_budget = None):
     if not _geoip_enabled:
         return dict(UNKNOWN_COUNTRY)
 
@@ -115,25 +119,54 @@ def _resolve_country_for_ip(db_path, ip_value, now_ts):
         return dict(UNKNOWN_COUNTRY)
 
     cached = sql_geoip_get_cached(db_path, normalized_ip)
-    if cached and (now_ts - int(cached.get('updatedAt') or 0) < _geoip_cache_ttl_seconds):
-        return {
-            'countryCode': cached.get('countryCode', ''),
-            'countryName': cached.get('countryName', 'Unknown') or 'Unknown'
-        }
+    if cached:
+        cached_code = cached.get('countryCode', '')
+        cache_ttl = _geoip_error_cache_ttl_seconds if cached_code == '__ERR__' else _geoip_cache_ttl_seconds
+        if now_ts - int(cached.get('updatedAt') or 0) < cache_ttl:
+            if cached_code == '__ERR__':
+                return dict(UNKNOWN_COUNTRY)
+            return {
+                'countryCode': cached_code,
+                'countryName': cached.get('countryName', 'Unknown') or 'Unknown'
+            }
+
+    if lookup_budget is not None and lookup_budget.get('remaining', 0) <= 0:
+        return dict(UNKNOWN_COUNTRY)
+
+    if lookup_budget is not None:
+        lookup_budget['remaining'] = max(0, lookup_budget.get('remaining', 0) - 1)
 
     resolved = lookup_country(
         normalized_ip,
         provider = _geoip_provider,
         timeout_seconds = _geoip_timeout_seconds
     )
-    sql_geoip_upsert(
-        db_path,
-        normalized_ip,
-        resolved.get('countryCode', ''),
-        resolved.get('countryName', 'Unknown'),
-        now_ts
-    )
-    return resolved
+
+    lookup_status = resolved.get('status', 'unknown')
+    if lookup_status == 'success':
+        sql_geoip_upsert(
+            db_path,
+            normalized_ip,
+            resolved.get('countryCode', ''),
+            resolved.get('countryName', 'Unknown'),
+            now_ts
+        )
+        return {
+            'countryCode': resolved.get('countryCode', ''),
+            'countryName': resolved.get('countryName', 'Unknown')
+        }
+
+    if lookup_status == 'error':
+        sql_geoip_upsert(db_path, normalized_ip, '__ERR__', 'Unknown', now_ts)
+    return dict(UNKNOWN_COUNTRY)
+
+def _query_int(name, default_value, min_value, max_value):
+    raw = request.args.get(name, str(default_value)).strip()
+    try:
+        value = int(raw)
+    except ValueError:
+        value = default_value
+    return max(min_value, min(max_value, value))
 
 def _get_client_ip():
     return normalize_ip_text(request.headers.get('X-Forwarded-For', request.remote_addr or '').split(',')[0].strip())
@@ -389,37 +422,71 @@ def root():
         error = f'Environment variable is not set: {_dbEnvVarName}'
     # Fetch all clients from the database.
     clients = None
+    page = _query_int('page', 1, 1, 10**6)
+    per_page = _query_int('per_page', _clients_default_per_page, 10, _clients_max_per_page)
+    sort_key = request.args.get('sort', 'last_seen').strip().lower()
+    sort_order = request.args.get('order', 'desc').strip().lower()
+    if sort_key not in ['last_seen', 'machine', 'source_ip', 'requests', 'license']:
+        sort_key = 'last_seen'
+    if sort_order not in ['asc', 'desc']:
+        sort_order = 'desc'
+
     try:
         if dbPath:
             clients = sql_get_all(dbPath)
-            now_ts = int(datetime.datetime.utcnow().timestamp())
-            country_by_ip = {}
             if clients:
-                for client in clients:
-                    source_ip = client.get('sourceIp', '')
-                    if source_ip not in country_by_ip:
-                        country_by_ip[source_ip] = _resolve_country_for_ip(dbPath, source_ip, now_ts)
-                    country_data = country_by_ip[source_ip]
-                    client['countryCode'] = country_data.get('countryCode', '')
-                    client['countryName'] = country_data.get('countryName', 'Unknown')
-                    client['countryDisplay'] = country_display(client['countryCode'], client['countryName'])
+                if sort_key == 'machine':
+                    clients = sorted(clients, key = lambda c: (c.get('machineName') or '').lower(), reverse = sort_order == 'desc')
+                elif sort_key == 'source_ip':
+                    clients = sorted(clients, key = lambda c: (c.get('sourceIp') or '').lower(), reverse = sort_order == 'desc')
+                elif sort_key == 'requests':
+                    clients = sorted(clients, key = lambda c: int(c.get('requestCount') or 0), reverse = sort_order == 'desc')
+                elif sort_key == 'license':
+                    clients = sorted(clients, key = lambda c: (c.get('licenseStatus') or '').lower(), reverse = sort_order == 'desc')
+                else:
+                    clients = sorted(clients, key = lambda c: c.get('lastRequestTime', ''), reverse = sort_order == 'desc')
     except Exception as e:
         error = f'Error while loading database: {e}'
     countClients = len(clients) if clients else 0
     countClientsWindows = len([c for c in clients if c['applicationId'] == 'Windows']) if clients else 0
     countClientsOffice = countClients - countClientsWindows
+    total_pages = max(1, (countClients + per_page - 1) // per_page)
+    page = min(page, total_pages)
+    start_index = (page - 1) * per_page
+    end_index = start_index + per_page
+    clients_page = clients[start_index:end_index] if clients else []
+
+    if dbPath and clients_page:
+        now_ts = int(datetime.datetime.utcnow().timestamp())
+        country_by_ip = {}
+        lookup_budget = {'remaining': _geoip_max_lookups_per_request}
+        for client in clients_page:
+            source_ip = client.get('sourceIp', '')
+            if source_ip not in country_by_ip:
+                country_by_ip[source_ip] = _resolve_country_for_ip(dbPath, source_ip, now_ts, lookup_budget = lookup_budget)
+            country_data = country_by_ip[source_ip]
+            client['countryCode'] = country_data.get('countryCode', '')
+            client['countryName'] = country_data.get('countryName', 'Unknown')
+            client['countryDisplay'] = country_display(client['countryCode'], client['countryName'])
+
     ui_message = session.pop('ui_message', None)
     ui_message_level = session.pop('ui_message_level', 'success')
     return render_template(
         'clients.html',
         path='/',
         error=error,
-        clients=clients,
+        clients=clients_page,
         ui_message=ui_message,
         ui_message_level=ui_message_level,
         count_clients=countClients,
+        count_clients_page=len(clients_page),
         count_clients_windows=countClientsWindows,
         count_clients_office=countClientsOffice,
+        page=page,
+        per_page=per_page,
+        total_pages=total_pages,
+        sort_key=sort_key,
+        sort_order=sort_order,
         count_projects=sum([len(entries) for entries in _get_kms_items_cache()[0].values()])
     ), 200 if error is None else 500
 

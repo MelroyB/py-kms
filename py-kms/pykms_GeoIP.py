@@ -9,7 +9,8 @@ from pykms_Blacklist import normalize_ip_text
 
 UNKNOWN_COUNTRY = {
     'countryCode': '',
-    'countryName': 'Unknown'
+    'countryName': 'Unknown',
+    'status': 'unknown'
 }
 
 def _country_code_to_flag(country_code):
@@ -35,11 +36,15 @@ def _is_lookup_candidate(ip_text):
 def lookup_country(ip_text, provider = 'ipapi.co', timeout_seconds = 2):
     normalized_ip = normalize_ip_text(ip_text)
     if not _is_lookup_candidate(normalized_ip):
-        return dict(UNKNOWN_COUNTRY)
+        data = dict(UNKNOWN_COUNTRY)
+        data['status'] = 'skipped'
+        return data
 
     provider_name = (provider or 'ipapi.co').strip().lower()
     if provider_name != 'ipapi.co':
-        return dict(UNKNOWN_COUNTRY)
+        data = dict(UNKNOWN_COUNTRY)
+        data['status'] = 'skipped'
+        return data
 
     url = f"https://ipapi.co/{normalized_ip}/json/"
     request = urllib.request.Request(url, headers = {'User-Agent': 'py-kms-webui/geoip'})
@@ -47,13 +52,18 @@ def lookup_country(ip_text, provider = 'ipapi.co', timeout_seconds = 2):
         with urllib.request.urlopen(request, timeout = max(1, float(timeout_seconds))) as response:
             payload = json.loads(response.read().decode('utf-8', errors='ignore'))
     except (urllib.error.URLError, urllib.error.HTTPError, TimeoutError, ValueError):
-        return dict(UNKNOWN_COUNTRY)
+        data = dict(UNKNOWN_COUNTRY)
+        data['status'] = 'error'
+        return data
 
     country_code = str(payload.get('country_code') or '').strip().upper()
     country_name = str(payload.get('country_name') or '').strip()
     if not country_code and not country_name:
-        return dict(UNKNOWN_COUNTRY)
+        data = dict(UNKNOWN_COUNTRY)
+        data['status'] = 'error'
+        return data
     return {
         'countryCode': country_code,
-        'countryName': country_name or 'Unknown'
+        'countryName': country_name or 'Unknown',
+        'status': 'success'
     }
