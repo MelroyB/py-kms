@@ -4,6 +4,7 @@ from pykms_Sql import sql_get_all, sql_delete, sql_geoip_get_cached, sql_geoip_u
 from pykms_DB2Dict import kmsDB2Dict
 from pykms_Blacklist import get_blacklist_path, parse_blacklist_text, normalize_ip_text, is_ip_blocked, load_blacklist_stats
 from pykms_GeoIP import lookup_country, country_display, UNKNOWN_COUNTRY
+from pykms_Docker import get_docker_update_status, request_update_job, DockerManagerError
 
 def _random_uuid():
     return str(uuid.uuid4()).replace('-', '_')
@@ -430,31 +431,48 @@ def settings():
         entries_text = '\n'.join(active_entries)
 
     if request.method == 'POST':
-        submitted_text = request.form.get('blacklist_entries', '')
-        _, errors, entries = parse_blacklist_text(submitted_text)
-        active_entries = entries
-        if errors:
-            error = 'Invalid entries detected. Please fix the lines shown below.'
-            parse_errors = errors
-            entries_text = submitted_text
-        else:
+        form_action = request.form.get('form_action', 'save_blacklist').strip()
+        if form_action == 'check_docker_update':
             try:
-                target_dir = os.path.dirname(blacklist_path)
-                if target_dir:
-                    os.makedirs(target_dir, exist_ok = True)
-                with open(blacklist_path, 'w') as f:
-                    payload = '\n'.join(entries)
-                    if payload:
-                        payload += '\n'
-                    f.write(payload)
-                entries_text = '\n'.join(entries)
-                success = f'Blacklist saved. {len(entries)} rule(s) active.'
+                docker_update = get_docker_update_status(force = True)
+                success = docker_update.get('reason', 'Docker image status refreshed.')
             except Exception as e:
-                error = f'Failed to save blacklist: {e}'
+                error = f'Docker update check failed: {e}'
+        elif form_action == 'run_docker_update':
+            try:
+                update_job = request_update_job()
+                success = f'Docker update started via helper container {update_job["helper_container_id"]}. The WebUI may become temporarily unavailable during restart.'
+            except DockerManagerError as e:
+                error = f'Docker update failed to start: {e}'
+            except Exception as e:
+                error = f'Docker update failed to start: {e}'
+        else:
+            submitted_text = request.form.get('blacklist_entries', '')
+            _, errors, entries = parse_blacklist_text(submitted_text)
+            active_entries = entries
+            if errors:
+                error = 'Invalid entries detected. Please fix the lines shown below.'
+                parse_errors = errors
+                entries_text = submitted_text
+            else:
+                try:
+                    target_dir = os.path.dirname(blacklist_path)
+                    if target_dir:
+                        os.makedirs(target_dir, exist_ok = True)
+                    with open(blacklist_path, 'w') as f:
+                        payload = '\n'.join(entries)
+                        if payload:
+                            payload += '\n'
+                        f.write(payload)
+                    entries_text = '\n'.join(entries)
+                    success = f'Blacklist saved. {len(entries)} rule(s) active.'
+                except Exception as e:
+                    error = f'Failed to save blacklist: {e}'
 
     blacklist_stats = load_blacklist_stats()
     stats_by_rule = sorted(blacklist_stats.get('by_rule', {}).items(), key = lambda kv: kv[1], reverse = True)
     stats_by_source_ip = sorted(blacklist_stats.get('by_source_ip', {}).items(), key = lambda kv: kv[1], reverse = True)
+    docker_update = get_docker_update_status(force = False)
 
     return render_template(
         'settings.html',
@@ -465,6 +483,7 @@ def settings():
         blacklist_stats=blacklist_stats,
         stats_by_rule=stats_by_rule,
         stats_by_source_ip=stats_by_source_ip,
+        docker_update=docker_update,
         error=error,
         success=success,
         parse_errors=parse_errors
@@ -576,6 +595,7 @@ def root():
     countClientsWindows = len([c for c in clients if c['applicationId'] == 'Windows']) if clients else 0
     countClientsOffice = countClients - countClientsWindows
     dashboard = _build_dashboard_data(clients, blacklist_stats)
+    docker_update = get_docker_update_status(force = False)
     total_pages = max(1, (countClients + per_page - 1) // per_page)
     page = min(page, total_pages)
     start_index = (page - 1) * per_page
@@ -610,6 +630,7 @@ def root():
         count_clients_office=countClientsOffice,
         blacklist_stats=blacklist_stats,
         dashboard=dashboard,
+        docker_update=docker_update,
         page=page,
         per_page=per_page,
         total_pages=total_pages,

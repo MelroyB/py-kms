@@ -10,3 +10,4 @@ services:
       - "8080:8080"
     volumes:
       - ./data:/home/py-kms/db
+      - /var/run/docker.sock:/var/run/docker.sock

@@ -153,11 +153,18 @@ If activation fails, check:
 - `PYKMS_WEBUI_CLIENTS_PER_PAGE` (default `100`)
 - `PYKMS_WEBUI_CLIENTS_MAX_PER_PAGE` (default `500`)
 
+### Docker Image Update Management
+- `PYKMS_DOCKER_UPDATE_ENABLED` (default `0`, set to `1` to enable WebUI update checks and one-click container replacement)
+- `PYKMS_DOCKER_UPDATE_CHECK_INTERVAL_SECONDS` (default `21600`)
+- `PYKMS_DOCKER_IMAGE` (optional explicit image reference override, for example `melroy/py-kms:latest`)
+- `PYKMS_DOCKER_SOCKET_PATH` (default `/var/run/docker.sock`)
+
 ## Notes
 - For persistence, mount `/home/py-kms/db` as a volume.
 - If `LOGFILE=STDOUT`, source-IP startup backfill has no log files to parse.
 - GeoIP lookup uses an external provider by default (`ipapi.co`), so public source IPs may be sent to that service.
 - On container startup, missing required runtime files are auto-created (touch), including db/blacklist/stats files and custom logfile paths.
+- Docker self-update requires Docker socket access. Mounting `/var/run/docker.sock` gives this container broad control over the host Docker daemon.
 
 ## License
 `py-kms` is released under [The Unlicense](./LICENSE).

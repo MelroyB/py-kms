@@ -29,6 +29,17 @@
 </div>
 {% endif %}
 
+{% if docker_update.enabled and docker_update.available %}
+<div class="panel-card is-warning">
+    <p class="small-note text-warning">
+        Docker image update available for <code>{{ docker_update.current_image }}</code>.
+        Current: <code>{{ docker_update.current_digest or 'unknown' }}</code>.
+        Remote: <code>{{ docker_update.remote_digest or 'unknown' }}</code>.
+        <a href="/settings">Open settings</a>
+    </p>
+</div>
+{% endif %}
+
 <div class="stats-grid">
     <div class="stat-card">
         <p class="stat-label">Clients</p>

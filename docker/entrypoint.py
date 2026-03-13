@@ -13,6 +13,7 @@ import time
 
 PYTHON3 = '/usr/bin/python3'
 dbPath = os.path.join(os.sep, 'home', 'py-kms', 'db') # Do not include the database file name, as we must correct the folder permissions (the db file is recursively reachable)
+dockerSocketPath = os.getenv('PYKMS_DOCKER_SOCKET_PATH', '/var/run/docker.sock')
 
 def change_uid_grp(logger):
   if os.geteuid() != 0:
@@ -49,6 +50,11 @@ def change_uid_grp(logger):
     # Oh, the user also wants a custom log file -> make sure start.py can access it by setting the correct permissions (777)
     os.chmod(os.environ['LOGFILE'], 0o777)
     logger.error(str(subprocess.check_output(['ls', '-la', os.environ['LOGFILE']])))
+  if os.path.exists(dockerSocketPath):
+    docker_socket_gid = os.stat(dockerSocketPath).st_gid
+    group_ids = sorted(set([new_gid, docker_socket_gid]))
+    os.setgroups(group_ids)
+    logger.info("Added supplemental groups for Docker socket access: %s", group_ids)
   # Drop actual permissions
   logger.info(f"Setting gid to {new_gid}")
   os.setgid(new_gid)

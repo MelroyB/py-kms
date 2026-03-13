@@ -38,8 +38,46 @@
 {% endif %}
 
 <section class="panel-card">
+    <div class="section-head" style="margin-bottom:0.75rem;">
+        <div>
+            <h3 class="panel-title">Docker Image Updates</h3>
+            <p class="small-note">Checks the remote registry digest and can replace this container with the newer image in one action.</p>
+        </div>
+    </div>
+
+    <p class="small-note">
+        Enabled: <strong>{{ 'yes' if docker_update.enabled else 'no' }}</strong><br>
+        Socket: <code>{{ docker_update.socket_path }}</code><br>
+        Image: <code>{{ docker_update.current_image or 'unknown' }}</code><br>
+        Current digest: <code>{{ docker_update.current_digest or 'unknown' }}</code><br>
+        Remote digest: <code>{{ docker_update.remote_digest or 'unknown' }}</code><br>
+        Last checked: <span class="convert_timestamp">{{ docker_update.checked_at }}</span><br>
+        Status: <strong>{{ docker_update.reason }}</strong>
+    </p>
+
+    <div class="row-actions" style="margin-top:0.8rem;">
+        <form method="post" action="/settings" class="row-action-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="form_action" value="check_docker_update">
+            <button type="submit" class="login-button">Check Now</button>
+        </form>
+        <form method="post" action="/settings" class="row-action-form" onsubmit="return confirm('Pull newer Docker image and replace this container? The WebUI will restart.');">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+            <input type="hidden" name="form_action" value="run_docker_update">
+            <button type="submit" class="login-button" {% if not docker_update.enabled or not docker_update.can_update or not docker_update.available %}disabled{% endif %}>Update and Restart</button>
+        </form>
+    </div>
+
+    <p class="small-note" style="margin-top:0.75rem;">
+        Requirements: mount the Docker socket into the container and enable <code>PYKMS_DOCKER_UPDATE_ENABLED=1</code>.
+        This gives the WebUI effective control over the Docker daemon.
+    </p>
+</section>
+
+<section class="panel-card">
     <form method="post" action="/settings" class="login-form">
         <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+        <input type="hidden" name="form_action" value="save_blacklist">
         <div>
             <label class="login-label" for="blacklist_entries">Blacklist Rules</label>
             <textarea class="login-input" id="blacklist_entries" name="blacklist_entries" rows="14" spellcheck="false">{{ blacklist_entries }}</textarea>

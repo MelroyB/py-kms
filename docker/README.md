@@ -17,6 +17,24 @@ If you run with `WEBUI=1`, you can protect the web interface with environment va
 
 If a default password is detected, the WebUI shows a security warning banner.
 
+## Docker image update management
+The WebUI can check whether a newer image digest is available for the running container and can replace/restart the container in one action.
+
+Requirements:
+- mount `/var/run/docker.sock:/var/run/docker.sock`
+- set `PYKMS_DOCKER_UPDATE_ENABLED=1`
+
+Environment variables:
+- `PYKMS_DOCKER_UPDATE_ENABLED` (default: `0`)
+- `PYKMS_DOCKER_UPDATE_CHECK_INTERVAL_SECONDS` (default: `21600`)
+- `PYKMS_DOCKER_IMAGE` (optional explicit image reference override)
+- `PYKMS_DOCKER_SOCKET_PATH` (default: `/var/run/docker.sock`)
+
+Important:
+- The WebUI only auto-updates tag-based image references such as `melroy/py-kms:latest`.
+- Digest-pinned images are shown as non-updatable.
+- Docker socket access is highly privileged: the container effectively gains control over the host Docker daemon.
+
 ## IP Blacklist (persistent)
 The WebUI has a settings page where you can manage blacklist rules for source IPs and ranges.
 The rules are persisted in:
