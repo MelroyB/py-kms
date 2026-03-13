@@ -362,7 +362,7 @@ def _start_helper_container(helper_image, helper_env):
     binds = [f'{DOCKER_SOCKET_PATH}:{DOCKER_SOCKET_PATH}']
     payload = {
         'Image': helper_image,
-        'Cmd': ['python3', '-u', '/home/py-kms/pykms_DockerUpdater.py'],
+        'Entrypoint': ['/usr/bin/python3', '-u', '/home/py-kms/pykms_DockerUpdater.py'],
         'Env': helper_env,
         'Labels': {'com.melroy.pykms.role': 'updater-helper'},
         'HostConfig': {
