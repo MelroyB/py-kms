@@ -213,7 +213,8 @@ def inspect_image(image_ref):
 
 def get_remote_image_digest(image_ref):
     headers = _get_registry_headers(image_ref)
-    digest = headers.get('Docker-Content-Digest', '')
+    lowered_headers = {str(key).lower(): value for key, value in headers.items()}
+    digest = lowered_headers.get('docker-content-digest', '')
     if not digest:
         raise DockerManagerError(f'Registry did not return a manifest digest for {image_ref}.')
     return digest
