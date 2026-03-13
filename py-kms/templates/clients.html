@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
 
-{% block title %}clients{% endblock %}
+{% block title %}dashboard{% endblock %}
 
 {% block style %}
 .client-row[hidden] {
@@ -17,10 +17,10 @@
 {% else %}
 <div class="section-head">
     <div>
-        <h2 class="page-title">Client Activations</h2>
-        <p class="page-subtitle">Live overview of all unique clients that contacted this KMS instance.</p>
+        <h2 class="page-title">Activation Dashboard</h2>
+        <p class="page-subtitle">Live overview of requests, block events, client mix and recent activation activity.</p>
     </div>
-    <p class="small-note">Sorted as stored in sqlite.</p>
+    <p class="small-note">Based on sqlite client state and blacklist runtime stats.</p>
 </div>
 
 {% if ui_message %}
@@ -34,6 +34,16 @@
         <p class="stat-label">Clients</p>
         <p class="stat-value">{{ count_clients }}</p>
     </div>
+    <div class="stat-card stat-card-highlight">
+        <p class="stat-label">Successful Requests</p>
+        <p class="stat-value">{{ dashboard.totals.success_requests }}</p>
+        <p class="small-note">{{ dashboard.totals.success_rate }}% of observed traffic</p>
+    </div>
+    <div class="stat-card stat-card-danger">
+        <p class="stat-label">Blocked Requests</p>
+        <p class="stat-value">{{ dashboard.totals.blocked_requests }}</p>
+        <p class="small-note">{{ dashboard.totals.blocked_rate }}% of observed traffic</p>
+    </div>
     <div class="stat-card">
         <p class="stat-label">Windows</p>
         <p class="stat-value">{{ count_clients_windows }}</p>
@@ -46,9 +56,190 @@
         <p class="stat-label">Products</p>
         <p class="stat-value"><a href="/products">{{ count_projects }}</a></p>
     </div>
+    <div class="stat-card">
+        <p class="stat-label">Unique Source IPs</p>
+        <p class="stat-value">{{ dashboard.totals.unique_source_ips }}</p>
+    </div>
+    <div class="stat-card">
+        <p class="stat-label">Active 24h</p>
+        <p class="stat-value">{{ dashboard.totals.active_24h }}</p>
+    </div>
+    <div class="stat-card">
+        <p class="stat-label">Active 7d</p>
+        <p class="stat-value">{{ dashboard.totals.active_7d }}</p>
+    </div>
+</div>
+
+<div class="dashboard-grid">
+    <section class="panel-card chart-panel chart-panel-wide">
+        <div class="chart-head">
+            <div>
+                <h3 class="panel-title">Traffic Overview</h3>
+                <p class="small-note">Successful activation requests from sqlite versus blocked blacklist hits.</p>
+            </div>
+            <span class="badge-chip brand">{{ dashboard.totals.observed_requests }} observed</span>
+        </div>
+        <div class="traffic-meter" aria-label="Traffic overview">
+            <div class="traffic-meter-success" style="width: {{ dashboard.totals.success_rate }}%"></div>
+            <div class="traffic-meter-danger" style="width: {{ dashboard.totals.blocked_rate }}%"></div>
+        </div>
+        <div class="traffic-legend">
+            <span><i class="legend-dot success"></i>Successful {{ dashboard.totals.success_requests }}</span>
+            <span><i class="legend-dot blocked"></i>Blocked {{ dashboard.totals.blocked_requests }}</span>
+        </div>
+
+        <div class="mini-bars">
+            {% for bucket in dashboard.recent_buckets %}
+            <div class="mini-bar-wrap" title="{{ bucket.label }}: {{ bucket.value }} clients last seen">
+                <div class="mini-bar" style="height: {{ bucket.height }}px"></div>
+                <span>{{ bucket.label }}</span>
+            </div>
+            {% endfor %}
+        </div>
+        <p class="small-note">Recent activity chart shows how many unique clients were last seen on each of the last 7 days.</p>
+    </section>
+
+    <section class="panel-card chart-panel">
+        <div class="chart-head">
+            <div>
+                <h3 class="panel-title">Request Volume by Product Family</h3>
+                <p class="small-note">Grouped by application and summed by request count.</p>
+            </div>
+        </div>
+        {% if dashboard.app_rows %}
+        <div class="chart-list">
+            {% for row in dashboard.app_rows %}
+            <div class="chart-row">
+                <div class="chart-row-meta">
+                    <span>{{ row.label }}</span>
+                    <strong>{{ row.value }}</strong>
+                </div>
+                <div class="chart-track">
+                    <div class="chart-fill" style="width: {{ row.width }}%; background: {{ row.color }};"></div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="small-note">No application data available yet.</p>
+        {% endif %}
+    </section>
+
+    <section class="panel-card chart-panel">
+        <div class="chart-head">
+            <div>
+                <h3 class="panel-title">License State Mix</h3>
+                <p class="small-note">Unique clients grouped by current license status.</p>
+            </div>
+        </div>
+        {% if dashboard.license_rows %}
+        <div class="chart-list">
+            {% for row in dashboard.license_rows %}
+            <div class="chart-row">
+                <div class="chart-row-meta">
+                    <span>{{ row.label }}</span>
+                    <strong>{{ row.value }}</strong>
+                </div>
+                <div class="chart-track">
+                    <div class="chart-fill" style="width: {{ row.width }}%; background: {{ row.color }};"></div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="small-note">No license data available yet.</p>
+        {% endif %}
+    </section>
+
+    <section class="panel-card chart-panel">
+        <div class="chart-head">
+            <div>
+                <h3 class="panel-title">Top Source IPs</h3>
+                <p class="small-note">Highest request volume by normalized source IP.</p>
+            </div>
+        </div>
+        {% if dashboard.source_rows %}
+        <div class="chart-list">
+            {% for row in dashboard.source_rows %}
+            <div class="chart-row">
+                <div class="chart-row-meta">
+                    <span>{{ row.label }}</span>
+                    <strong>{{ row.value }}</strong>
+                </div>
+                <div class="chart-track">
+                    <div class="chart-fill" style="width: {{ row.width }}%; background: {{ row.color }};"></div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="small-note">No source IPs recorded yet.</p>
+        {% endif %}
+    </section>
+
+    <section class="panel-card chart-panel">
+        <div class="chart-head">
+            <div>
+                <h3 class="panel-title">Blacklist Hotspots</h3>
+                <p class="small-note">Rules with the highest number of blocked attempts.</p>
+            </div>
+            <a href="/settings" class="small-note">Open settings</a>
+        </div>
+        {% if dashboard.blocked_rule_rows %}
+        <div class="chart-list">
+            {% for row in dashboard.blocked_rule_rows %}
+            <div class="chart-row">
+                <div class="chart-row-meta">
+                    <span>{{ row.label }}</span>
+                    <strong>{{ row.value }}</strong>
+                </div>
+                <div class="chart-track">
+                    <div class="chart-fill" style="width: {{ row.width }}%; background: {{ row.color }};"></div>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="small-note">No blocked attempts recorded yet.</p>
+        {% endif %}
+    </section>
+
+    <section class="panel-card chart-panel">
+        <div class="chart-head">
+            <div>
+                <h3 class="panel-title">Top Clients</h3>
+                <p class="small-note">Machines with the highest cumulative request count.</p>
+            </div>
+        </div>
+        {% if dashboard.top_clients %}
+        <div class="leaderboard">
+            {% for client in dashboard.top_clients %}
+            <div class="leaderboard-row">
+                <div>
+                    <strong>{{ client.machineName }}</strong>
+                    <p class="small-note">{{ client.applicationId }} • {{ client.sourceIp }}</p>
+                </div>
+                <div class="leaderboard-metric">
+                    <strong>{{ client.requestCount }}</strong>
+                    <span class="small-note convert_timestamp">{{ client.lastRequestTime }}</span>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+        {% else %}
+        <p class="small-note">No client leaderboard available yet.</p>
+        {% endif %}
+    </section>
 </div>
 
 {% if clients %}
+<div class="section-head">
+    <div>
+        <h3 class="page-title">Client Table</h3>
+        <p class="page-subtitle">Detailed per-client records with search, sorting and direct actions.</p>
+    </div>
+    <p class="small-note">Sorted as stored in sqlite.</p>
+</div>
 <div class="toolbar">
     <div class="search-wrap">
         <input id="clientSearch" class="search-input" type="search" placeholder="Search machine, app, product, id or source ip">

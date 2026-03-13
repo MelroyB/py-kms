@@ -99,6 +99,8 @@ _geoip_max_lookups_per_request = max(1, int(os.environ.get('PYKMS_GEOIP_MAX_LOOK
 _clients_default_per_page = max(10, int(os.environ.get('PYKMS_WEBUI_CLIENTS_PER_PAGE', '100')))
 _clients_max_per_page = max(_clients_default_per_page, int(os.environ.get('PYKMS_WEBUI_CLIENTS_MAX_PER_PAGE', '500')))
 
+_dashboard_palette = ['#0078d4', '#1e88e5', '#36a2eb', '#4bc0c0', '#7cc7ff', '#9bd4ff', '#f6b94d', '#e86c52']
+
 def _env_check():
     if _dbEnvVarName not in os.environ:
         raise Exception(f'Environment variable is not set: {_dbEnvVarName}')
@@ -167,6 +169,128 @@ def _query_int(name, default_value, min_value, max_value):
     except ValueError:
         value = default_value
     return max(min_value, min(max_value, value))
+
+def _safe_int(value):
+    try:
+        return int(value or 0)
+    except (TypeError, ValueError):
+        return 0
+
+def _parse_client_timestamp(value):
+    if not value:
+        return None
+    try:
+        return datetime.datetime.fromisoformat(str(value))
+    except ValueError:
+        return None
+
+def _chart_rows_from_counts(counts, limit = 6):
+    rows = []
+    for index, (label, value) in enumerate(sorted(counts.items(), key = lambda kv: kv[1], reverse = True)[:limit]):
+        rows.append({
+            'label': label or 'Unknown',
+            'value': _safe_int(value),
+            'color': _dashboard_palette[index % len(_dashboard_palette)]
+        })
+    max_value = max([row['value'] for row in rows], default = 0)
+    for row in rows:
+        row['width'] = 0 if max_value == 0 else round((row['value'] / max_value) * 100, 2)
+    return rows
+
+def _build_recent_client_buckets(clients, days = 7):
+    today = datetime.datetime.utcnow().date()
+    bucket_map = {}
+    for offset in range(days - 1, -1, -1):
+        day = today - datetime.timedelta(days = offset)
+        bucket_map[day] = 0
+
+    for client in clients or []:
+        parsed = _parse_client_timestamp(client.get('lastRequestTime'))
+        if parsed is None:
+            continue
+        day = parsed.date()
+        if day in bucket_map:
+            bucket_map[day] += 1
+
+    buckets = []
+    max_value = max(bucket_map.values(), default = 0)
+    for day, value in bucket_map.items():
+        buckets.append({
+            'label': day.strftime('%d %b'),
+            'value': value,
+            'height': 16 if max_value == 0 else max(16, round((value / max_value) * 120)),
+            'iso': day.isoformat()
+        })
+    return buckets
+
+def _build_dashboard_data(clients, blacklist_stats):
+    clients = clients or []
+    blacklist_stats = blacklist_stats or {}
+
+    total_success_requests = sum([_safe_int(client.get('requestCount')) for client in clients])
+    total_blocked_requests = _safe_int(blacklist_stats.get('total_blocked_attempts'))
+    total_observed_requests = total_success_requests + total_blocked_requests
+    success_rate = round((total_success_requests / total_observed_requests) * 100, 1) if total_observed_requests else 100.0
+    blocked_rate = round((total_blocked_requests / total_observed_requests) * 100, 1) if total_observed_requests else 0.0
+
+    now_utc = datetime.datetime.utcnow()
+    active_24h = 0
+    active_7d = 0
+    unique_source_ips = set()
+    request_count_by_app = {}
+    client_count_by_license = {}
+    request_count_by_source = {}
+
+    for client in clients:
+        request_count = _safe_int(client.get('requestCount'))
+        app_name = client.get('applicationId') or 'Unknown'
+        license_name = client.get('licenseStatus') or 'Unknown'
+        source_ip = client.get('sourceIp') or ''
+
+        request_count_by_app[app_name] = request_count_by_app.get(app_name, 0) + request_count
+        client_count_by_license[license_name] = client_count_by_license.get(license_name, 0) + 1
+
+        if source_ip:
+            unique_source_ips.add(source_ip)
+            request_count_by_source[source_ip] = request_count_by_source.get(source_ip, 0) + request_count
+
+        parsed = _parse_client_timestamp(client.get('lastRequestTime'))
+        if parsed is None:
+            continue
+        age = now_utc - parsed
+        if age <= datetime.timedelta(hours = 24):
+            active_24h += 1
+        if age <= datetime.timedelta(days = 7):
+            active_7d += 1
+
+    top_clients = []
+    for client in sorted(clients, key = lambda c: _safe_int(c.get('requestCount')), reverse = True)[:5]:
+        top_clients.append({
+            'machineName': client.get('machineName') or 'Unknown',
+            'applicationId': client.get('applicationId') or 'Unknown',
+            'sourceIp': client.get('sourceIp') or 'unknown',
+            'requestCount': _safe_int(client.get('requestCount')),
+            'lastRequestTime': client.get('lastRequestTime')
+        })
+
+    return {
+        'totals': {
+            'success_requests': total_success_requests,
+            'blocked_requests': total_blocked_requests,
+            'observed_requests': total_observed_requests,
+            'success_rate': success_rate,
+            'blocked_rate': blocked_rate,
+            'unique_source_ips': len(unique_source_ips),
+            'active_24h': active_24h,
+            'active_7d': active_7d
+        },
+        'app_rows': _chart_rows_from_counts(request_count_by_app, limit = 6),
+        'license_rows': _chart_rows_from_counts(client_count_by_license, limit = 6),
+        'source_rows': _chart_rows_from_counts(request_count_by_source, limit = 6),
+        'blocked_rule_rows': _chart_rows_from_counts(blacklist_stats.get('by_rule', {}), limit = 6),
+        'recent_buckets': _build_recent_client_buckets(clients, days = 7),
+        'top_clients': top_clients
+    }
 
 def _get_client_ip():
     return normalize_ip_text(request.headers.get('X-Forwarded-For', request.remote_addr or '').split(',')[0].strip())
@@ -431,6 +555,7 @@ def root():
     if sort_order not in ['asc', 'desc']:
         sort_order = 'desc'
 
+    blacklist_stats = load_blacklist_stats()
     try:
         if dbPath:
             clients = sql_get_all(dbPath)
@@ -450,6 +575,7 @@ def root():
     countClients = len(clients) if clients else 0
     countClientsWindows = len([c for c in clients if c['applicationId'] == 'Windows']) if clients else 0
     countClientsOffice = countClients - countClientsWindows
+    dashboard = _build_dashboard_data(clients, blacklist_stats)
     total_pages = max(1, (countClients + per_page - 1) // per_page)
     page = min(page, total_pages)
     start_index = (page - 1) * per_page
@@ -482,6 +608,8 @@ def root():
         count_clients_page=len(clients_page),
         count_clients_windows=countClientsWindows,
         count_clients_office=countClientsOffice,
+        blacklist_stats=blacklist_stats,
+        dashboard=dashboard,
         page=page,
         per_page=per_page,
         total_pages=total_pages,

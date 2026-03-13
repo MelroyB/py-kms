@@ -274,6 +274,16 @@ a:hover {
     box-shadow: 0 10px 22px rgba(20, 54, 105, 0.1);
 }
 
+.stat-card-highlight {
+    background: linear-gradient(145deg, #f4fbff, #e3f3ff);
+    border-color: #b6daf8;
+}
+
+.stat-card-danger {
+    background: linear-gradient(145deg, #fff8f5, #ffe9e2);
+    border-color: #f1c4b8;
+}
+
 .stat-label {
     margin: 0;
     font-size: 0.74rem;
@@ -437,6 +447,161 @@ table.compact-table tbody tr:hover td {
     border-radius: var(--radius-l);
     background: #ffffff;
     padding: 0.9rem;
+}
+
+.dashboard-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.9rem;
+    margin-bottom: 1rem;
+}
+
+.chart-panel {
+    background:
+        radial-gradient(circle at top right, rgba(0, 120, 212, 0.08), transparent 34%),
+        linear-gradient(180deg, rgba(248, 251, 255, 0.96), #ffffff);
+}
+
+.chart-panel-wide {
+    grid-column: span 2;
+}
+
+.chart-head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.85rem;
+}
+
+.traffic-meter {
+    display: flex;
+    width: 100%;
+    height: 16px;
+    overflow: hidden;
+    border-radius: 999px;
+    background: #edf2f8;
+    border: 1px solid #d8e1eb;
+}
+
+.traffic-meter-success {
+    background: linear-gradient(90deg, #17925b, #2fbf71);
+}
+
+.traffic-meter-danger {
+    background: linear-gradient(90deg, #da6c4b, #c83f39);
+}
+
+.traffic-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.8rem;
+    margin-top: 0.55rem;
+    font-size: 0.82rem;
+    color: var(--muted);
+}
+
+.legend-dot {
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    border-radius: 999px;
+    margin-right: 0.35rem;
+}
+
+.legend-dot.success {
+    background: #22a866;
+}
+
+.legend-dot.blocked {
+    background: #cf4c40;
+}
+
+.mini-bars {
+    display: grid;
+    grid-template-columns: repeat(7, minmax(0, 1fr));
+    gap: 0.7rem;
+    align-items: end;
+    min-height: 168px;
+    margin-top: 1rem;
+}
+
+.mini-bar-wrap {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 0.45rem;
+    min-height: 168px;
+}
+
+.mini-bar {
+    width: 100%;
+    min-width: 22px;
+    max-width: 64px;
+    border-radius: 14px 14px 6px 6px;
+    background: linear-gradient(180deg, #77c5ff 0%, #0078d4 100%);
+    box-shadow: 0 12px 24px rgba(0, 120, 212, 0.18);
+}
+
+.mini-bar-wrap span {
+    font-size: 0.76rem;
+    color: var(--muted);
+}
+
+.chart-list {
+    display: grid;
+    gap: 0.75rem;
+}
+
+.chart-row {
+    display: grid;
+    gap: 0.35rem;
+}
+
+.chart-row-meta {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    font-size: 0.86rem;
+    color: #28405f;
+}
+
+.chart-track {
+    width: 100%;
+    height: 10px;
+    border-radius: 999px;
+    overflow: hidden;
+    background: #edf2f8;
+}
+
+.chart-fill {
+    height: 100%;
+    border-radius: inherit;
+    box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.2);
+}
+
+.leaderboard {
+    display: grid;
+    gap: 0.65rem;
+}
+
+.leaderboard-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem 0.8rem;
+    border-radius: 12px;
+    border: 1px solid #d7e2ef;
+    background: rgba(255, 255, 255, 0.78);
+}
+
+.leaderboard-metric {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 0.2rem;
 }
 
 .panel-title {
@@ -680,6 +845,14 @@ textarea.login-input {
     .stats-grid {
         grid-template-columns: repeat(2, minmax(0, 1fr));
     }
+
+    .dashboard-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .chart-panel-wide {
+        grid-column: span 2;
+    }
 }
 
 @media (max-width: 700px) {
@@ -711,6 +884,14 @@ textarea.login-input {
         grid-template-columns: 1fr;
     }
 
+    .dashboard-grid {
+        grid-template-columns: 1fr;
+    }
+
+    .chart-panel-wide {
+        grid-column: span 1;
+    }
+
     .section-head {
         flex-direction: column;
         align-items: flex-start;
@@ -718,5 +899,19 @@ textarea.login-input {
 
     .search-input {
         width: 100%;
+    }
+
+    .chart-head,
+    .leaderboard-row {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .leaderboard-metric {
+        align-items: flex-start;
+    }
+
+    .mini-bars {
+        gap: 0.45rem;
     }
 }
