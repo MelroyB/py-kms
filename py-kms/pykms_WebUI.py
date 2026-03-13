@@ -1,4 +1,4 @@
-import os, uuid, datetime, hmac, threading
+import os, uuid, datetime, hmac, threading, socket
 from flask import Flask, render_template, request, redirect, url_for, session
 from pykms_Sql import sql_get_all, sql_delete, sql_geoip_get_cached, sql_geoip_upsert
 from pykms_DB2Dict import kmsDB2Dict
@@ -101,10 +101,87 @@ _clients_default_per_page = max(10, int(os.environ.get('PYKMS_WEBUI_CLIENTS_PER_
 _clients_max_per_page = max(_clients_default_per_page, int(os.environ.get('PYKMS_WEBUI_CLIENTS_MAX_PER_PAGE', '500')))
 
 _dashboard_palette = ['#0078d4', '#1e88e5', '#36a2eb', '#4bc0c0', '#7cc7ff', '#9bd4ff', '#f6b94d', '#e86c52']
+_kms_status_cache = {
+    'checked_at_ts': 0,
+    'status': None
+}
+_kms_status_lock = threading.Lock()
 
 def _env_check():
     if _dbEnvVarName not in os.environ:
         raise Exception(f'Environment variable is not set: {_dbEnvVarName}')
+
+def _kms_status_targets():
+    port = max(1, int(os.environ.get('PORT', '1688')))
+    listen_values = [entry.strip() for entry in os.environ.get('IP', '::').split() if entry.strip()]
+    if not listen_values:
+        listen_values = ['::']
+
+    targets = []
+    for host in listen_values:
+        probe_hosts = [host]
+        if host == '::':
+            probe_hosts = ['::1', '127.0.0.1']
+        elif host in ['0.0.0.0', '']:
+            probe_hosts = ['127.0.0.1']
+        for probe_host in probe_hosts:
+            targets.append({'listen_host': host, 'probe_host': probe_host, 'port': port})
+    return targets
+
+def _probe_tcp_target(host, port, timeout_seconds = 1.0):
+    try:
+        with socket.create_connection((host, port), timeout = timeout_seconds):
+            return True, ''
+    except Exception as e:
+        return False, str(e)
+
+def _get_kms_server_status(force = False):
+    now_ts = int(datetime.datetime.utcnow().timestamp())
+    with _kms_status_lock:
+        if (not force) and _kms_status_cache['status'] and now_ts - _kms_status_cache['checked_at_ts'] < 10:
+            return dict(_kms_status_cache['status'])
+
+    targets = _kms_status_targets()
+    details = []
+    is_online = False
+    for target in targets:
+        ok, error = _probe_tcp_target(target['probe_host'], target['port'])
+        details.append({
+            'listen_host': target['listen_host'],
+            'probe_host': target['probe_host'],
+            'port': target['port'],
+            'ok': ok,
+            'error': error
+        })
+        if ok:
+            is_online = True
+
+    online_targets = [detail for detail in details if detail['ok']]
+    checked_at = datetime.datetime.utcnow().isoformat()
+    if is_online:
+        summary = f'Port {online_targets[0]["port"]} reachable'
+    else:
+        summary = f'Port {details[0]["port"]} unreachable'
+
+    tooltip_lines = [f'Last checked: {checked_at} UTC']
+    for detail in details:
+        if detail['ok']:
+            tooltip_lines.append(f'{detail["listen_host"]}:{detail["port"]} reachable via {detail["probe_host"]}')
+        else:
+            tooltip_lines.append(f'{detail["listen_host"]}:{detail["port"]} failed via {detail["probe_host"]}: {detail["error"]}')
+
+    status = {
+        'online': is_online,
+        'summary': summary,
+        'label': 'Server online' if is_online else 'Server offline',
+        'pill_class': 'is-ok' if is_online else 'is-danger',
+        'checked_at': checked_at,
+        'tooltip': '\n'.join(tooltip_lines)
+    }
+    with _kms_status_lock:
+        _kms_status_cache['checked_at_ts'] = now_ts
+        _kms_status_cache['status'] = dict(status)
+    return status
 
 def _is_safe_next_url(path):
     return isinstance(path, str) and path.startswith('/') and not path.startswith('//')
@@ -344,7 +421,10 @@ def _clear_login_failures(ip):
 
 @app.context_processor
 def _inject_csrf_token():
-    return {'csrf_token': _ensure_csrf_token()}
+    return {
+        'csrf_token': _ensure_csrf_token(),
+        'kms_server_status': _get_kms_server_status(force = False)
+    }
 
 @app.before_request
 def _protect_webui():

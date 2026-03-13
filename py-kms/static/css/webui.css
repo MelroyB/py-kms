@@ -154,6 +154,18 @@ a:hover {
     background: #eef6ff;
 }
 
+.status-pill.is-ok {
+    border-color: #b7e3c9;
+    color: #176742;
+    background: #ecfbf3;
+}
+
+.status-pill.is-danger {
+    border-color: #efc1be;
+    color: #9a312c;
+    background: #fff0ee;
+}
+
 .auth-actions {
     display: flex;
     align-items: center;

@@ -24,7 +24,7 @@
                     <p class="brand-subtitle">Activation traffic, product catalog and runtime details in one view.</p>
                 </div>
                 <div class="auth-actions">
-                    <span class="status-pill">Server online</span>
+                    <span class="status-pill {{ kms_server_status.pill_class }} row-tooltip" title="{{ kms_server_status.tooltip }}">{{ kms_server_status.label }}</span>
                     {% if webui_auth_enabled %}
                     {% if session.get('pykms_webui_auth') %}
                     <span class="status-pill">Signed in as {{ session.get('pykms_webui_user', webui_auth_user) }}</span>
