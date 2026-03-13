@@ -15,13 +15,25 @@
     <p class="page-subtitle">{{ error }}</p>
 </div>
 {% else %}
-<div class="section-head">
-    <div>
+<section class="hero-panel">
+    <div class="hero-copy">
+        <span class="hero-kicker">Operations View</span>
         <h2 class="page-title">Activation Dashboard</h2>
         <p class="page-subtitle">Live overview of requests, block events, client mix and recent activation activity.</p>
     </div>
-    <p class="small-note">Based on sqlite client state and blacklist runtime stats.</p>
-</div>
+    <div class="hero-meta">
+        <div class="hero-meta-card">
+            <span class="stat-label">Traffic Status</span>
+            <strong>{{ dashboard.totals.success_rate }}% successful</strong>
+            <p class="small-note">Based on sqlite client state and blacklist runtime stats.</p>
+        </div>
+        <div class="hero-meta-card">
+            <span class="stat-label">Runtime</span>
+            <strong>{{ dashboard.totals.observed_requests }} observed requests</strong>
+            <p class="small-note">{{ dashboard.totals.active_24h }} active clients in the last 24 hours.</p>
+        </div>
+    </div>
+</section>
 
 {% if ui_message %}
 <div class="panel-card is-{{ ui_message_level }}">
@@ -40,7 +52,8 @@
 </div>
 {% endif %}
 
-<div class="stats-grid">
+<section class="dashboard-band">
+<div class="stats-grid stats-grid-compact">
     <div class="stat-card">
         <p class="stat-label">Clients</p>
         <p class="stat-value">{{ count_clients }}</p>
@@ -81,7 +94,7 @@
     </div>
 </div>
 
-<div class="dashboard-grid">
+<div class="dashboard-grid dashboard-grid-priority">
     <section class="panel-card chart-panel chart-panel-wide">
         <div class="chart-head">
             <div>
@@ -110,6 +123,40 @@
         <p class="small-note">Recent activity chart shows how many unique clients were last seen on each of the last 7 days.</p>
     </section>
 
+    <section class="panel-card chart-panel chart-panel-accent">
+        <div class="chart-head">
+            <div>
+                <h3 class="panel-title">Operational Snapshot</h3>
+                <p class="small-note">Quick context for routing maintenance and investigating anomalies.</p>
+            </div>
+            <a href="/settings" class="row-action-btn">Open settings</a>
+        </div>
+        <div class="snapshot-list">
+            <div class="snapshot-item">
+                <span class="stat-label">Current Image</span>
+                <strong>{{ docker_update.current_image or 'unknown' }}</strong>
+                <p class="small-note">{{ docker_update.reason }}</p>
+            </div>
+            <div class="snapshot-item">
+                <span class="stat-label">Blocked Rules</span>
+                <strong>{{ dashboard.blocked_rule_rows | length }}</strong>
+                <p class="small-note">{{ blacklist_stats.total_blocked_attempts }} blocked attempts tracked.</p>
+            </div>
+            <div class="snapshot-item">
+                <span class="stat-label">Top Client</span>
+                {% if dashboard.top_clients %}
+                <strong>{{ dashboard.top_clients[0].machineName }}</strong>
+                <p class="small-note">{{ dashboard.top_clients[0].requestCount }} requests from {{ dashboard.top_clients[0].sourceIp }}</p>
+                {% else %}
+                <strong>No data</strong>
+                <p class="small-note">Client leaderboard will appear after traffic is recorded.</p>
+                {% endif %}
+            </div>
+        </div>
+    </section>
+</div>
+
+<div class="dashboard-grid">
     <section class="panel-card chart-panel">
         <div class="chart-head">
             <div>
@@ -242,42 +289,51 @@
         {% endif %}
     </section>
 </div>
+</section>
 
 {% if clients %}
-<div class="section-head">
+<div class="section-head section-head-spaced">
     <div>
         <h3 class="page-title">Client Table</h3>
         <p class="page-subtitle">Detailed per-client records with search, sorting and direct actions.</p>
     </div>
     <p class="small-note">Sorted as stored in sqlite.</p>
 </div>
-<div class="toolbar">
-    <div class="search-wrap">
+<div class="toolbar toolbar-panel">
+    <div class="toolbar-search">
         <input id="clientSearch" class="search-input" type="search" placeholder="Search machine, app, product, id or source ip">
+        <span id="clientCounter" class="muted">{{ count_clients_page }} visible on this page</span>
     </div>
-    <form method="get" action="/" class="row-actions" style="gap:0.4rem;">
-        <label class="muted" for="sort" style="margin:0;">Sort</label>
-        <select id="sort" name="sort" class="search-input" style="max-width:11rem;">
-            <option value="last_seen" {% if sort_key == 'last_seen' %}selected{% endif %}>Last Seen</option>
-            <option value="requests" {% if sort_key == 'requests' %}selected{% endif %}>Seen Count</option>
-            <option value="machine" {% if sort_key == 'machine' %}selected{% endif %}>Machine</option>
-            <option value="source_ip" {% if sort_key == 'source_ip' %}selected{% endif %}>Source IP</option>
-            <option value="license" {% if sort_key == 'license' %}selected{% endif %}>License</option>
-        </select>
-        <select name="order" class="search-input" style="max-width:8rem;">
-            <option value="desc" {% if sort_order == 'desc' %}selected{% endif %}>Desc</option>
-            <option value="asc" {% if sort_order == 'asc' %}selected{% endif %}>Asc</option>
-        </select>
-        <select name="per_page" class="search-input" style="max-width:8rem;">
-            <option value="25" {% if per_page == 25 %}selected{% endif %}>25/page</option>
-            <option value="50" {% if per_page == 50 %}selected{% endif %}>50/page</option>
-            <option value="100" {% if per_page == 100 %}selected{% endif %}>100/page</option>
-            <option value="250" {% if per_page == 250 %}selected{% endif %}>250/page</option>
-        </select>
+    <form method="get" action="/" class="toolbar-controls">
+        <label class="control-group" for="sort">
+            <span class="control-label">Sort</span>
+            <select id="sort" name="sort" class="search-input control-input">
+                <option value="last_seen" {% if sort_key == 'last_seen' %}selected{% endif %}>Last Seen</option>
+                <option value="requests" {% if sort_key == 'requests' %}selected{% endif %}>Seen Count</option>
+                <option value="machine" {% if sort_key == 'machine' %}selected{% endif %}>Machine</option>
+                <option value="source_ip" {% if sort_key == 'source_ip' %}selected{% endif %}>Source IP</option>
+                <option value="license" {% if sort_key == 'license' %}selected{% endif %}>License</option>
+            </select>
+        </label>
+        <label class="control-group">
+            <span class="control-label">Order</span>
+            <select name="order" class="search-input control-input control-input-narrow">
+                <option value="desc" {% if sort_order == 'desc' %}selected{% endif %}>Desc</option>
+                <option value="asc" {% if sort_order == 'asc' %}selected{% endif %}>Asc</option>
+            </select>
+        </label>
+        <label class="control-group">
+            <span class="control-label">Page Size</span>
+            <select name="per_page" class="search-input control-input control-input-narrow">
+                <option value="25" {% if per_page == 25 %}selected{% endif %}>25/page</option>
+                <option value="50" {% if per_page == 50 %}selected{% endif %}>50/page</option>
+                <option value="100" {% if per_page == 100 %}selected{% endif %}>100/page</option>
+                <option value="250" {% if per_page == 250 %}selected{% endif %}>250/page</option>
+            </select>
+        </label>
         <input type="hidden" name="page" value="1">
         <button type="submit" class="row-action-btn">Apply</button>
     </form>
-    <span id="clientCounter" class="muted">{{ count_clients_page }} visible on this page</span>
 </div>
 
 <div class="table-shell">

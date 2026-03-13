@@ -3,20 +3,25 @@
 {% block title %}settings{% endblock %}
 
 {% block content %}
-<div class="section-head">
-    <div>
+<section class="hero-panel hero-panel-settings">
+    <div class="hero-copy">
+        <span class="hero-kicker">Control Center</span>
         <h2 class="page-title">Security Settings</h2>
-        <p class="page-subtitle">Manage source IP blacklist rules for incoming KMS connections.</p>
+        <p class="page-subtitle">Manage source IP blacklist rules, blocked traffic statistics and container update actions.</p>
     </div>
-</div>
-
-<div class="panel-card">
-    <p class="small-note">
-        Storage path: <code>{{ blacklist_path }}</code><br>
-        Active rules: <strong>{{ blacklist_count }}</strong><br>
-        Supported formats: single IP (<code>192.168.1.10</code>), CIDR (<code>10.0.0.0/24</code>), range (<code>172.16.0.10-172.16.0.50</code>).
-    </p>
-</div>
+    <div class="hero-meta">
+        <div class="hero-meta-card">
+            <span class="stat-label">Blacklist Path</span>
+            <strong>{{ blacklist_path }}</strong>
+            <p class="small-note">{{ blacklist_count }} active rules.</p>
+        </div>
+        <div class="hero-meta-card">
+            <span class="stat-label">Blocked Attempts</span>
+            <strong>{{ blacklist_stats.total_blocked_attempts }}</strong>
+            <p class="small-note">Supported formats: single IP, CIDR and explicit ranges.</p>
+        </div>
+    </div>
+</section>
 
 {% if success %}
 <div class="panel-card is-success">
@@ -37,65 +42,105 @@
 </div>
 {% endif %}
 
-<section class="panel-card">
-    <div class="section-head" style="margin-bottom:0.75rem;">
-        <div>
-            <h3 class="panel-title">Docker Image Updates</h3>
-            <p class="small-note">Checks the remote registry digest and can replace this container with the newer image in one action.</p>
+<div class="settings-layout">
+<section class="panel-card settings-primary">
+    <div class="panel-stack">
+        <div class="chart-head">
+            <div>
+                <h3 class="panel-title">Blacklist Rules</h3>
+                <p class="small-note">Place editable runtime rules first, then use stats below to verify which entries are firing.</p>
+            </div>
+            <span class="badge-chip slate">{{ blacklist_count }} active</span>
         </div>
-    </div>
 
-    <p class="small-note">
-        Enabled: <strong>{{ 'yes' if docker_update.enabled else 'no' }}</strong><br>
-        Socket: <code>{{ docker_update.socket_path }}</code><br>
-        Image: <code>{{ docker_update.current_image or 'unknown' }}</code><br>
-        Current digest: <code>{{ docker_update.current_digest or 'unknown' }}</code><br>
-        Remote digest: <code>{{ docker_update.remote_digest or 'unknown' }}</code><br>
-        Last checked: <span class="convert_timestamp">{{ docker_update.checked_at }}</span><br>
-        Status: <strong>{{ docker_update.reason }}</strong>
-    </p>
-
-    <div class="row-actions" style="margin-top:0.8rem;">
-        <form method="post" action="/settings" class="row-action-form">
+        <form method="post" action="/settings" class="login-form">
             <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <input type="hidden" name="form_action" value="check_docker_update">
-            <button type="submit" class="login-button">Check Now</button>
-        </form>
-        <form method="post" action="/settings" class="row-action-form" onsubmit="return confirm('Pull newer Docker image and replace this container? The WebUI will restart.');">
-            <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-            <input type="hidden" name="form_action" value="run_docker_update">
-            <button type="submit" class="login-button" {% if not docker_update.enabled or not docker_update.can_update or not docker_update.available %}disabled{% endif %}>Update and Restart</button>
+            <input type="hidden" name="form_action" value="save_blacklist">
+            <div>
+                <label class="login-label" for="blacklist_entries">Blacklist Rules</label>
+                <textarea class="login-input" id="blacklist_entries" name="blacklist_entries" rows="14" spellcheck="false">{{ blacklist_entries }}</textarea>
+            </div>
+            <div class="inline-actions">
+                <button type="submit" class="login-button">Save Blacklist</button>
+                <span class="small-note">Applies to new incoming KMS connections.</span>
+            </div>
         </form>
     </div>
+</section>
 
-    <p class="small-note" style="margin-top:0.75rem;">
-        Requirements: mount the Docker socket into the container and enable <code>PYKMS_DOCKER_UPDATE_ENABLED=1</code>.
-        This gives the WebUI effective control over the Docker daemon.
-    </p>
+<aside class="settings-sidebar">
+<section class="panel-card chart-panel chart-panel-accent">
+    <div class="panel-stack">
+        <div class="chart-head">
+            <div>
+                <h3 class="panel-title">Docker Image Updates</h3>
+                <p class="small-note">Checks the remote registry digest and can replace this container with the newer image in one action.</p>
+            </div>
+            <span class="badge-chip {% if docker_update.available %}warn{% else %}slate{% endif %}">
+                {% if docker_update.available %}Update available{% else %}No update{% endif %}
+            </span>
+        </div>
+
+        <div class="metric-stack">
+            <div class="metric-row"><span>Enabled</span><strong>{{ 'yes' if docker_update.enabled else 'no' }}</strong></div>
+            <div class="metric-row"><span>Image</span><strong>{{ docker_update.current_image or 'unknown' }}</strong></div>
+            <div class="metric-row"><span>Current digest</span><strong>{{ docker_update.current_digest or 'unknown' }}</strong></div>
+            <div class="metric-row"><span>Remote digest</span><strong>{{ docker_update.remote_digest or 'unknown' }}</strong></div>
+            <div class="metric-row"><span>Last checked</span><strong class="convert_timestamp">{{ docker_update.checked_at }}</strong></div>
+        </div>
+
+        <div class="inline-actions inline-actions-stretch">
+            <form method="post" action="/settings" class="row-action-form">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="form_action" value="check_docker_update">
+                <button type="submit" class="login-button">Check Now</button>
+            </form>
+            <form method="post" action="/settings" class="row-action-form" onsubmit="return confirm('Pull newer Docker image and replace this container? The WebUI will restart.');">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
+                <input type="hidden" name="form_action" value="run_docker_update">
+                <button type="submit" class="login-button" {% if not docker_update.enabled or not docker_update.can_update or not docker_update.available %}disabled{% endif %}>Update and Restart</button>
+            </form>
+        </div>
+
+        <p class="small-note">
+            Status: <strong>{{ docker_update.reason }}</strong><br>
+            Socket: <code>{{ docker_update.socket_path }}</code><br>
+            Requires Docker socket access and <code>PYKMS_DOCKER_UPDATE_ENABLED=1</code>.
+        </p>
+    </div>
 </section>
 
 <section class="panel-card">
-    <form method="post" action="/settings" class="login-form">
-        <input type="hidden" name="csrf_token" value="{{ csrf_token }}">
-        <input type="hidden" name="form_action" value="save_blacklist">
-        <div>
-            <label class="login-label" for="blacklist_entries">Blacklist Rules</label>
-            <textarea class="login-input" id="blacklist_entries" name="blacklist_entries" rows="14" spellcheck="false">{{ blacklist_entries }}</textarea>
+    <div class="panel-stack">
+        <div class="chart-head">
+            <div>
+                <h3 class="panel-title">Blocked Attempt Summary</h3>
+                <p class="small-note">Use this as the quick readout before diving into the detailed tables below.</p>
+            </div>
         </div>
-        <button type="submit" class="login-button">Save Blacklist</button>
-    </form>
+        <div class="metric-stack">
+            <div class="metric-row"><span>Total blocked attempts</span><strong>{{ blacklist_stats.total_blocked_attempts }}</strong></div>
+            <div class="metric-row"><span>Rules with hits</span><strong>{{ stats_by_rule | length }}</strong></div>
+            <div class="metric-row"><span>Blocked source IPs</span><strong>{{ stats_by_source_ip | length }}</strong></div>
+            {% if blacklist_stats.updated_at %}
+            <div class="metric-row"><span>Last update</span><strong class="convert_timestamp">{{ blacklist_stats.updated_at }}</strong></div>
+            {% endif %}
+        </div>
+    </div>
 </section>
+</aside>
+</div>
 
 <section class="panel-card">
-    <h3 class="panel-title">Blocked Attempt Stats</h3>
-    <p class="small-note">
-        Total blocked attempts: <strong>{{ blacklist_stats.total_blocked_attempts }}</strong>
-        {% if blacklist_stats.updated_at %}
-        <br>Last update: <span class="convert_timestamp">{{ blacklist_stats.updated_at }}</span>
-        {% endif %}
-    </p>
+    <div class="section-head section-head-spaced">
+        <div>
+            <h3 class="panel-title">Blocked Attempt Stats</h3>
+            <p class="small-note">Rule-level and source-level views side by side for easier tuning.</p>
+        </div>
+    </div>
 
-    <div class="table-shell" style="margin-top:0.7rem;">
+    <div class="split-tables">
+    <div class="table-shell">
         <table class="compact-table">
             <thead>
                 <tr>
@@ -118,7 +163,7 @@
         </table>
     </div>
 
-    <div class="table-shell" style="margin-top:0.7rem;">
+    <div class="table-shell">
         <table class="compact-table">
             <thead>
                 <tr>
@@ -139,6 +184,7 @@
                 {% endfor %}
             </tbody>
         </table>
+    </div>
     </div>
 </section>
 {% endblock %}
