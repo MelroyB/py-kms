@@ -162,7 +162,7 @@ You can read them using pkeyconfig-gui off MDL forums or Product Key Config. Rea
 			<Activate KmsItem="8449b1fb-f0ea-497a-99ab-66ca96e9a0f5" />
 		</CsvlkItem>
 
-		<CsvlkItem DisplayName="Windows Server 2019 (Azure Only)" ReleaseDate="2018-10-02T00:00:00Z" GroupId="206" IniFileName="Windows" Id="3c006fa7-3b03-45a4-93da-63ddc1bdce11">
+		<CsvlkItem DisplayName="Windows Server 2019 (Azure Only)" ReleaseDate="2018-10-02T00:00:00Z" GroupId="206" MinKeyId="551000000" MaxKeyId="570999999" IniFileName="Windows" Id="3c006fa7-3b03-45a4-93da-63ddc1bdce11">
 			<Activate KmsItem="8449b1fb-f0ea-497a-99ab-66ca96e9a0f5" />
 			<Activate KmsItem="cbdcb1ba-e093-4c81-a463-10775291fdf9" />
 		</CsvlkItem>
